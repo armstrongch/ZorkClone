@@ -4,6 +4,9 @@
 		<meta charset="UTF-8">
 		<title>Zork Clone</title>
 		<style type="text/css">
+			.clickableLI {
+				cursor: pointer;
+			}
 		</style>
 	</head>
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
@@ -24,7 +27,7 @@
 			
 			function mapLocation(name, items, actions, travelLocations)
 			{
-				this.name = name; //must be unique
+				this.name = name;
 				this.items = items; //array items in the location
 				this.actions = actions; //dictionary of action names and functions
 				this.travelLocations = travelLocations; //locations accessible from this locations
@@ -60,16 +63,18 @@
 				$('#nearbyItems').html('');
 				for (let i = 0; i < currentLocation.items.length; i++)
 				{
+					var item = currentLocation.items[i];
 					$('#nearbyItems').html(
-						$('#nearbyItems').html() + "<li>" + currentLocation.items[i].name
+						$('#nearbyItems').html() + "<li>" + getItemHTML(item)
 					);
 				}
 				
 				$('#inventoryInfo').html('');
 				for (let i = 0; i < inventory.length; i++)
 				{
+					var item = inventory[i];
 					$('#inventoryInfo').html(
-						$('#inventoryInfo').html() + "<li>" + inventory[i].name
+						$('#inventoryInfo').html() + "<li>" + getItemHTML(item)
 					);
 				}
 			}
@@ -79,13 +84,39 @@
 				enterLocation(currentLocation.name);
 			}
 			
+			function getItemHTML(item)
+			{
+				var itemHTML = item.name;
+				if (item.actions.length > 0)
+				{
+					var itemActionListHTML = getItemActionListHTML(item);
+					itemHTML += itemActionListHTML;
+				}
+				return itemHTML;
+			}
+			
+			function getItemActionListHTML(item)
+			{
+				var itemActionListHTML = "<ul>";
+				for (let i = 0; i < item.actions.length; i++)
+				{
+					var action = item.actions[i];
+					var actionName = action[0];
+					var actionFunction = action[1];
+					var actionHTML = "<li class='clickableLI' onclick='(" + actionFunction + ")();'>" + actionName + "</li>";
+					itemActionListHTML += actionHTML;
+				}
+				itemActionListHTML += "</ul>";
+				return itemActionListHTML;
+			}
+			
 			//Items
 			var inventoryAxe = new item(
 				"Axe", 
 				[
 					["Drop", function() 
 						{
-							currentLocation.items.push(axe);
+							currentLocation.items.push(nearbyAxe);
 							inventory.splice(inventory.indexOf(inventoryAxe), 1);
 							reloadLocation();
 						}
@@ -93,9 +124,17 @@
 				]
 			);
 			
-			var axe = new item(
+			var nearbyAxe = new item(
 				"Axe",
-				[]
+				[
+					["Pick up", function() 
+						{
+							currentLocation.items.splice(currentLocation.items.indexOf(nearbyAxe), 1);
+							inventory.push(inventoryAxe);
+							reloadLocation();
+						}
+					]
+				]
 			);
 			
 			//Locations
