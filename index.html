@@ -55,6 +55,8 @@
 					"Location: " + locationName
 				);
 				
+				showMessage("You arrive at " + locationName + ".");
+				
 				for (let i = 0; i < map.length; i++)
 				{
 					if (map[i].name == locationName)
@@ -136,8 +138,8 @@
 						{
 							currentLocation.items.push(nearbyAxe);
 							inventory.splice(inventory.indexOf(inventoryAxe), 1);
-							showMessage("You drop your axe.");
 							reloadLocation();
+							showMessage("You drop your axe.");
 						}
 					]
 				]
@@ -150,8 +152,8 @@
 						{
 							currentLocation.items.splice(currentLocation.items.indexOf(nearbyAxe), 1);
 							inventory.push(inventoryAxe);
-							showMessage("You pick up an axe.");
 							reloadLocation();
+							showMessage("You pick up an axe.");
 						}
 					]
 				]
