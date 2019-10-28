@@ -13,10 +13,12 @@
 	
 	<body onload="setUp()">
 		<p id="locationInfo"></p>
+		<strong><p id="info" style="color: red"></p></strong>
 		<p>Nearby Items:</p>
 		<ul id="nearbyItems"></ul>
 		<p>Inventory:</p>
 		<ul id="inventoryInfo"></ul>
+		
 		
 		<script>
 			function item(name, actions)
@@ -110,6 +112,11 @@
 				return itemActionListHTML;
 			}
 			
+			function showMessage(message)
+			{
+				$('#info').html(message);
+			}
+			
 			//Items
 			var inventoryAxe = new item(
 				"Axe", 
@@ -118,6 +125,7 @@
 						{
 							currentLocation.items.push(nearbyAxe);
 							inventory.splice(inventory.indexOf(inventoryAxe), 1);
+							showMessage("You drop your axe.");
 							reloadLocation();
 						}
 					]
@@ -131,6 +139,7 @@
 						{
 							currentLocation.items.splice(currentLocation.items.indexOf(nearbyAxe), 1);
 							inventory.push(inventoryAxe);
+							showMessage("You pick up an axe.");
 							reloadLocation();
 						}
 					]
