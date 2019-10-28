@@ -14,6 +14,8 @@
 	<body onload="setUp()">
 		<p id="locationInfo"></p>
 		<strong><p id="info" style="color: red"></p></strong>
+		<p>Nearby Locations:</p>
+		<ul id="nearbyLocations"></ul>
 		<p>Nearby Items:</p>
 		<ul id="nearbyItems"></ul>
 		<p>Inventory:</p>
@@ -42,7 +44,7 @@
 			function setUp()
 			{
 				inventory = [inventoryAxe];
-				map = [forestClearing];
+				map = [forestClearing, forestPath];
 				
 				enterLocation("Forest Clearing");
 			}
@@ -61,6 +63,15 @@
 						i = map.length;
 					}
 				}
+				
+				var nearbyLocationsList = "<ul>";
+				for (let i = 0; i < currentLocation.travelLocations.length; i++)
+				{
+					var locationHTML = "<li class='clickableLI' onclick='enterLocation(\"" + currentLocation.travelLocations[i] + "\")'>" + currentLocation.travelLocations[i] + "</li>";
+					nearbyLocationsList += locationHTML;
+				}
+				nearbyLocationsList += "</ul>";
+				$('#nearbyLocations').html(nearbyLocationsList);
 				
 				$('#nearbyItems').html('');
 				for (let i = 0; i < currentLocation.items.length; i++)
@@ -149,9 +160,16 @@
 			//Locations
 			var forestClearing = new mapLocation(
 				"Forest Clearing",
-				[],
-				[],
-				[]
+				[], //items
+				[], //actions
+				["Forest Path"] //locations
+			);
+			
+			var forestPath = new mapLocation(
+				"Forest Path",
+				[], //items
+				[], //actions
+				["Forest Clearing"] //locations
 			);
 			
 		</script>
