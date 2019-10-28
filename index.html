@@ -10,6 +10,7 @@
 	
 	<body onload="setUp()">
 		<p id="locationInfo"></p>
+		<ul id="nearbyItems"></ul>
 		<p>Inventory:</p>
 		<ul id="inventoryInfo"></ul>
 		
@@ -55,6 +56,23 @@
 					}
 				}
 				
+				if (currentLocation.items.length > 0)
+				{
+					$('#locationInfo').html(
+						$('#locationInfo').html() + "<br/>" +
+						"Nearby items:"
+					);
+				}
+				
+				$('#nearbyItems').html('');
+				for (let i = 0; i < currentLocation.items.length; i++)
+				{
+					$('#nearbyItems').html(
+						$('#nearbyItems').html() + "<li>" + currentLocation.items[i].name
+					);
+				}
+				
+				$('#inventoryInfo').html('');
 				for (let i = 0; i < inventory.length; i++)
 				{
 					$('#inventoryInfo').html(
