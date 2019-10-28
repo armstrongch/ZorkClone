@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Zork Clone</title>
+		<style type="text/css">
+		</style>
+	</head>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	
+	<body onload="setUp()">
+		<p id="locationInfo"></p>
+		<p>Inventory:</p>
+		<ul id="inventoryInfo"></ul>
+		
+		<script>
+			function item(name, actions)
+			{
+				this.name = name; //must be unique
+				this.actions = actions; //dictionary of action names and functions
+			}
+			
+			function mapLocation(name, items, actions, travelLocations)
+			{
+				this.name = name; //must be unique
+				this.items = items; //array items in the location
+				this.actions = actions; //dictionary of action names and functions
+				this.travelLocations = travelLocations; //locations accessible from this locations
+			}
+			
+			var currentLocation;
+			var inventory = []; //all the items that you're carrying
+			var map = []; //all of the locations in the game
+			
+			function setUp()
+			{
+				inventory = [inventoryAxe];
+				map = [forestClearing];
+				
+				enterLocation("Forest Clearing");
+			}
+			
+			function enterLocation(locationName)
+			{
+				$('#locationInfo').html(
+					"Location: " + locationName
+				);
+				
+				for (let i = 0; i < map.length; i++)
+				{
+					if (map[i].name == locationName)
+					{
+						currentLocation = map[i];
+						i = map.length;
+					}
+				}
+				
+				for (let i = 0; i < inventory.length; i++)
+				{
+					$('#inventoryInfo').html(
+						$('#inventoryInfo').html() + "<li>" + inventory[i].name
+					);
+				}
+			}
+			
+			function reloadLocation()
+			{
+				enterLocation(currentLocation.name);
+			}
+			
+			//Items
+			var inventoryAxe = new item(
+				"Axe", 
+				[
+					["Drop", function() 
+						{
+							currentLocation.items.push(axe);
+							inventory.splice(inventory.indexOf(inventoryAxe), 1);
+							reloadLocation();
+						}
+					]
+				]
+			);
+			
+			var axe = new item(
+				"Axe",
+				[]
+			);
+			
+			//Locations
+			var forestClearing = new mapLocation(
+				"Forest Clearing",
+				[],
+				[],
+				[]
+			);
+			
+		</script>
+	</body>
+</html>
