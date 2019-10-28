@@ -27,6 +27,7 @@
 			{
 				this.name = name; //must be unique
 				this.actions = actions; //dictionary of action names and functions
+				this.type = "none";
 			}
 			
 			function mapLocation(name, items, actions, travelLocations)
@@ -51,6 +52,9 @@
 			
 			function enterLocation(locationName)
 			{
+				inventory.sort((a, b) => (a.name > b.name) ? 1 : -1);
+				map.sort((a, b) => (a.name > b.name) ? 1 : -1);
+				
 				$('#locationInfo').html(
 					"Location: " + locationName
 				);
@@ -144,6 +148,20 @@
 					]
 				]
 			);
+			inventoryAxe.type = "chopping tool";
+			
+			var woddenLog = new item(
+				"Wooden Log", 
+				[
+					["Discard", function() 
+						{
+							inventory.splice(inventory.indexOf(woddenLog), 1);
+							reloadLocation();
+							showMessage("You discard the wooden log.");
+						}
+					]
+				]
+			);
 			
 			var nearbyAxe = new item(
 				"Axe",
@@ -159,10 +177,48 @@
 				]
 			);
 			
+			var treeGoblin = new item(
+				"Tree Goblin",
+				[]
+			);
+			
+			var tree = new item(
+				"Tree",
+				[
+					["Chop Down", function() 
+						{
+							var hasChoppingTool = false;
+							var choppingToolName = "";
+							for (let i = 0; i < inventory.length; i++)
+							{
+								if (inventory[i].type == "chopping tool")
+								{
+									hasChoppingTool = true;
+									choppingToolName = inventory[i].name;
+								}
+							}
+							
+							if (hasChoppingTool)
+							{
+								currentLocation.items.splice(currentLocation.items.indexOf(tree), 1);
+								inventory.push(woddenLog);
+								currentLocation.items.push(treeGoblin);
+								reloadLocation();
+								showMessage("You chop down a tree with: " + choppingToolName + ". A tree goblin emerges from the stump.");
+							}
+							else
+							{
+								showMessage("You need a tool to chop down a tree.");
+							}
+						}
+					]
+				]
+			);
+			
 			//Locations
 			var forestClearing = new mapLocation(
 				"Forest Clearing",
-				[], //items
+				[tree, tree, tree], //items
 				[], //actions
 				["Forest Path"] //locations
 			);
