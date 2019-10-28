@@ -10,6 +10,7 @@
 	
 	<body onload="setUp()">
 		<p id="locationInfo"></p>
+		<p>Nearby Items:</p>
 		<ul id="nearbyItems"></ul>
 		<p>Inventory:</p>
 		<ul id="inventoryInfo"></ul>
@@ -54,14 +55,6 @@
 						currentLocation = map[i];
 						i = map.length;
 					}
-				}
-				
-				if (currentLocation.items.length > 0)
-				{
-					$('#locationInfo').html(
-						$('#locationInfo').html() + "<br/>" +
-						"Nearby items:"
-					);
 				}
 				
 				$('#nearbyItems').html('');
