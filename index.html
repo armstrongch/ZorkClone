@@ -23,11 +23,11 @@
 		
 		
 		<script>
-			function item(name, actions)
+			function item(name, actions, attributes)
 			{
 				this.name = name; //must be unique
 				this.actions = actions; //dictionary of action names and functions
-				this.type = "none";
+				this.attributes = attributes;
 			}
 			
 			function mapLocation(name, items, actions, travelLocations)
@@ -146,9 +146,9 @@
 							showMessage("You drop your axe.");
 						}
 					]
-				]
+				], 
+				["ChoppingTool"]
 			);
-			inventoryAxe.type = "chopping tool";
 			
 			var woddenLog = new item(
 				"Wooden Log", 
@@ -160,7 +160,7 @@
 							showMessage("You discard the wooden log.");
 						}
 					]
-				]
+				], []
 			);
 			
 			var nearbyAxe = new item(
@@ -174,12 +174,12 @@
 							showMessage("You pick up an axe.");
 						}
 					]
-				]
+				], []
 			);
 			
 			var treeGoblin = new item(
 				"Tree Goblin",
-				[]
+				[], []
 			);
 			
 			var tree = new item(
@@ -191,10 +191,13 @@
 							var choppingToolName = "";
 							for (let i = 0; i < inventory.length; i++)
 							{
-								if (inventory[i].type == "chopping tool")
+								for (let j = 0; j < inventory[i].attributes.length; j++)
 								{
-									hasChoppingTool = true;
-									choppingToolName = inventory[i].name;
+									if (inventory[i].attributes[j] == "ChoppingTool")
+									{
+										hasChoppingTool = true;
+										choppingToolName = inventory[i].name;
+									}
 								}
 							}
 							
@@ -208,11 +211,11 @@
 							}
 							else
 							{
-								showMessage("You need a tool to chop down a tree.");
+								showMessage("You need a chopping tool to chop down a tree.");
 							}
 						}
 					]
-				]
+				], []
 			);
 			
 			//Locations
