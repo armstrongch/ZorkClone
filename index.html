@@ -20,33 +20,173 @@
 		<ul id="nearbyItems"></ul>
 		<p>Inventory:</p>
 		<ul id="inventoryInfo"></ul>
-		
+		<p>Injuries:</p>
+		<p id="healthStatusInfo"></p>
 		
 		<script>
-			function item(name, actions, attributes)
+			function getWeaponFromInventory(source)
 			{
-				this.name = name; //must be unique
-				this.actions = actions; //dictionary of action names and functions
-				this.attributes = attributes;
+				this.type = "";
+				this.rank = -1;
+				this.name = "";
+				for (let i = 0; i < source.length; i++)
+				{
+					var item = source[i];
+					for (let j = 0; j < item.attributes.length; j++)
+					{
+						var attribute = item.attributes[j];
+						if ((attribute.length > 6) && (attribute.substr(0,6) == "Weapon"))
+						{
+							testRank = parseInt(attribute.substr(7,8));
+							if (testRank > this.rank)
+							{
+								this.name = item.name;
+								this.type = attribute.substr(10,attribute.length);
+								this.rank = testRank;
+							}
+							
+						}
+					}
+				}
 			}
 			
-			function mapLocation(name, items, actions, travelLocations)
+			function item(name, actions, attributes)
 			{
 				this.name = name;
-				this.items = items; //array items in the location
+				this.originalName = name;
+				this.actions = actions; //dictionary of action names and functions
+				this.attributes = attributes;
+				for (let i = 0; i < attributes.length; i++)
+				{
+					if (attributes[i] == "HasHealth")
+					{
+						this.health = new bodyHealthTracking;
+					}
+				}
+			}
+			
+			function mapLocation(name, actions, travelLocations)
+			{
+				this.name = name;
+				this.items = []; //array items in the location
 				this.actions = actions; //dictionary of action names and functions
 				this.travelLocations = travelLocations; //locations accessible from this locations
+			}
+			
+			function damageHealthWithWeapon(weaponName, weaponType, target)
+			{
+				switch (weaponType)
+				{
+					case "Chopping":
+						if (target.health.rightArm > 0)
+						{
+							target.health.rightArm = 0;
+						}
+						else if (target.health.leftArm > 0)
+						{
+							target.health.leftArm = 0;
+						}
+						else if (target.health.rightLeg > 0)
+						{
+							target.health.rightLeg = 0;
+						}
+						else if (target.health.leftLeg > 0)
+						{
+							target.health.leftLeg = 0;
+						}
+						else if (target.health.leftLeg > 0)
+						{
+							target.health.leftLeg = 0;
+						}
+						else if (target.health.head > 0)
+						{
+							target.health.head = 0;
+						}
+						break;
+				}
+				var statusText = target.health.getStatusText();
+				if (statusText.length > 0)
+				{
+					target.name = target.health.getStatusText() + " " + target.originalName;
+				}
+			}
+			
+			function bodyHealthTracking()
+			{
+				this.head = 2;
+				this.torso = 2;
+				this.leftArm = 2;
+				this.rightArm = 2;
+				this.leftLeg = 2;
+				this.rightLeg = 2;
+				this.getStatusText = function()
+				{
+					var headStatus = "";
+					var torsoStatus = "";
+					var armStatus = "";
+					var legStatus = "";
+					if (this.head == 1)
+					{
+						headStatus = "Concussed";
+					}
+					else if (this.head == 0)
+					{
+						headStatus = "Decapitated";
+					}
+					
+					if ((this.leftArm == 0) && (this.rightArm == 0))
+					{
+						armStatus = "Armless";
+					}
+					else if ((this.leftArm == 0) || (this.rightArm == 0))
+					{
+						armStatus = "One-armed";
+					}
+					
+					if ((this.leftLeg == 0) && (this.rightLeg == 0))
+					{
+						legStatus = "Legless";
+					}
+					else if ((this.leftLeg == 0) || (this.rightLeg == 0))
+					{
+						legStatus = "One-Legged";
+					}
+					
+					if (this.torso == 1)
+					{
+						torsoStatus = "Wounded";
+					}
+					
+					var statusText = torsoStatus;
+					if ((statusText.length > 0) && (headStatus.length > 0))
+					{
+						statusText += ", ";
+					}
+					statusText += headStatus;
+					if ((statusText.length > 0) && (armStatus.length > 0))
+					{
+						statusText += ", ";
+					}
+					statusText += armStatus;
+					if ((statusText.length > 0) && (legStatus.length > 0))
+					{
+						statusText += ", ";
+					}
+					statusText += legStatus;
+					
+					return statusText;
+				};
 			}
 			
 			var currentLocation;
 			var inventory = []; //all the items that you're carrying
 			var map = []; //all of the locations in the game
+			var playerHealth = new bodyHealthTracking();
 			
 			function setUp()
 			{
-				inventory = [inventoryAxe];
+				inventory.push(new inventoryAxe());
 				map = [forestClearing, forestPath];
-				
 				enterLocation("Forest Clearing");
 			}
 			
@@ -84,7 +224,7 @@
 				{
 					var item = currentLocation.items[i];
 					$('#nearbyItems').html(
-						$('#nearbyItems').html() + "<li>" + getItemHTML(item)
+						$('#nearbyItems').html() + "<li>" + getItemHTML(item, "currentLocation.items", i)
 					);
 				}
 				
@@ -93,28 +233,31 @@
 				{
 					var item = inventory[i];
 					$('#inventoryInfo').html(
-						$('#inventoryInfo').html() + "<li>" + getItemHTML(item)
+						$('#inventoryInfo').html() + "<li>" + getItemHTML(item, "inventory", i)
 					);
 				}
+				
+				$('#healthStatusInfo').html(playerHealth.getStatusText());
 			}
 			
-			function reloadLocation()
+			function reloadLocation(message)
 			{
 				enterLocation(currentLocation.name);
+				showMessage(message);
 			}
 			
-			function getItemHTML(item)
+			function getItemHTML(item, source, index)
 			{
 				var itemHTML = item.name;
 				if (item.actions.length > 0)
 				{
-					var itemActionListHTML = getItemActionListHTML(item);
+					var itemActionListHTML = getItemActionListHTML(item, source, index);
 					itemHTML += itemActionListHTML;
 				}
 				return itemHTML;
 			}
 			
-			function getItemActionListHTML(item)
+			function getItemActionListHTML(item, source, index)
 			{
 				var itemActionListHTML = "<ul>";
 				for (let i = 0; i < item.actions.length; i++)
@@ -122,7 +265,8 @@
 					var action = item.actions[i];
 					var actionName = action[0];
 					var actionFunction = action[1];
-					var actionHTML = "<li class='clickableLI' onclick='(" + actionFunction + ")();'>" + actionName + "</li>";
+					
+					var actionHTML = "<li class='clickableLI' onclick='(" + source + "[" + index + "].actions[" + i + "][1].bind(" + source + "[" + index + "]))();'>" + actionName + "</li>";
 					itemActionListHTML += actionHTML;
 				}
 				itemActionListHTML += "</ul>";
@@ -135,100 +279,128 @@
 			}
 			
 			//Items
-			var inventoryAxe = new item(
-				"Axe", 
-				[
-					["Drop", function() 
-						{
-							currentLocation.items.push(nearbyAxe);
-							inventory.splice(inventory.indexOf(inventoryAxe), 1);
-							reloadLocation();
-							showMessage("You drop your axe.");
-						}
-					]
-				], 
-				["ChoppingTool"]
-			);
-			
-			var woddenLog = new item(
-				"Wooden Log", 
-				[
-					["Discard", function() 
-						{
-							inventory.splice(inventory.indexOf(woddenLog), 1);
-							reloadLocation();
-							showMessage("You discard the wooden log.");
-						}
-					]
-				], []
-			);
-			
-			var nearbyAxe = new item(
-				"Axe",
-				[
-					["Pick up", function() 
-						{
-							currentLocation.items.splice(currentLocation.items.indexOf(nearbyAxe), 1);
-							inventory.push(inventoryAxe);
-							reloadLocation();
-							showMessage("You pick up an axe.");
-						}
-					]
-				], []
-			);
-			
-			var treeGoblin = new item(
-				"Tree Goblin",
-				[], []
-			);
-			
-			var tree = new item(
-				"Tree",
-				[
-					["Chop Down", function() 
-						{
-							var hasChoppingTool = false;
-							var choppingToolName = "";
-							for (let i = 0; i < inventory.length; i++)
+			function inventoryAxe() {
+				return new item(
+					"Axe", 
+					[
+						["Drop", function() 
 							{
-								for (let j = 0; j < inventory[i].attributes.length; j++)
+								currentLocation.items.push(new nearbyAxe());
+								inventory.splice(inventory.indexOf(this), 1);
+								reloadLocation("You drop your axe.");
+							}
+						]
+					], 
+					["ChoppingTool", "Weapon-50-Chopping"] //WeaponRanks must be 2-digit numbers
+				);
+			};
+			
+			function woddenLog() {
+				return new item(
+					"Wooden Log", 
+					[
+						["Discard", function() 
+							{
+								inventory.splice(inventory.indexOf(this), 1);
+								reloadLocation("You discard the wooden log.");
+							}
+						]
+					], []
+				);
+			};
+			
+			function nearbyAxe() {
+				return new item(
+					"Axe",
+					[
+						["Pick up", function() 
+							{
+								currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+								inventory.push(new inventoryAxe());
+								reloadLocation("You pick up an axe.");
+							}
+						]
+					], []
+				);
+			};
+			
+			function treeGoblin() { 
+				return new item(
+					"Tree Goblin",
+					[
+						["Attack", function()
+							{
+								var weapon = new getWeaponFromInventory(inventory);
+								
+								if (weapon.rank != -1)
 								{
-									if (inventory[i].attributes[j] == "ChoppingTool")
+									damageHealthWithWeapon(weapon.name, weapon.type, this);
+									if ((this.health.head == 0) || (this.health.torso == 0))
 									{
-										hasChoppingTool = true;
-										choppingToolName = inventory[i].name;
+										this.name = this.name + " (Dead)";
+										this.actions = [];
 									}
+									reloadLocation("You attack the " + this.originalName + " with your " + weapon.name + ".");
+								}
+								else
+								{
+									showMessage("You need a weapon to attack the Tree Goblin.");
 								}
 							}
-							
-							if (hasChoppingTool)
+						]
+					], ["HasHealth"]
+				);
+			};
+			
+			function tree() {
+				return new item(
+					"Tree",
+					[
+						["Chop Down", function() 
 							{
-								currentLocation.items.splice(currentLocation.items.indexOf(tree), 1);
-								inventory.push(woddenLog);
-								currentLocation.items.push(treeGoblin);
-								reloadLocation();
-								showMessage("You chop down a tree with: " + choppingToolName + ". A tree goblin emerges from the stump.");
+								var hasChoppingTool = false;
+								var choppingToolName = "";
+								for (let i = 0; i < inventory.length; i++)
+								{
+									for (let j = 0; j < inventory[i].attributes.length; j++)
+									{
+										if (inventory[i].attributes[j] == "ChoppingTool")
+										{
+											hasChoppingTool = true;
+											choppingToolName = inventory[i].name;
+										}
+									}
+								}
+								
+								if (hasChoppingTool)
+								{
+									currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+									inventory.push(new woddenLog());
+									currentLocation.items.push(new treeGoblin());
+									reloadLocation("You chop down a tree with your " + choppingToolName + ". A Tree Goblin emerges from the stump.");
+								}
+								else
+								{
+									showMessage("You need a tool to chop down a tree.");
+								}
 							}
-							else
-							{
-								showMessage("You need a chopping tool to chop down a tree.");
-							}
-						}
-					]
-				], []
-			);
+						]
+					], []
+				);
+			};
 			
 			//Locations
 			var forestClearing = new mapLocation(
 				"Forest Clearing",
-				[tree, tree, tree], //items
 				[], //actions
 				["Forest Path"] //locations
 			);
+			forestClearing.items.push(new tree());
+			forestClearing.items.push(new tree());
+			forestClearing.items.push(new tree());
 			
 			var forestPath = new mapLocation(
 				"Forest Path",
-				[], //items
 				[], //actions
 				["Forest Clearing"] //locations
 			);
