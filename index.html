@@ -73,41 +73,50 @@
 				this.travelLocations = travelLocations; //locations accessible from this locations
 			}
 			
-			function damageHealthWithWeapon(weaponName, weaponType, target)
+			function damageHealthWithWeapon(weaponType, targetHealth)
 			{
 				switch (weaponType)
 				{
-					case "Chopping":
-						if (target.health.rightArm > 0)
+					case "Biting":
+						if (targetHealth.rightLeg > 0)
 						{
-							target.health.rightArm = 0;
+							targetHealth.rightLeg -= 1;
 						}
-						else if (target.health.leftArm > 0)
+						else if (targetHealth.leftLeg > 0)
 						{
-							target.health.leftArm = 0;
+							targetHealth.leftLeg -= 1;
 						}
-						else if (target.health.rightLeg > 0)
+						else if (targetHealth.torso > 0)
 						{
-							target.health.rightLeg = 0;
-						}
-						else if (target.health.leftLeg > 0)
-						{
-							target.health.leftLeg = 0;
-						}
-						else if (target.health.leftLeg > 0)
-						{
-							target.health.leftLeg = 0;
-						}
-						else if (target.health.head > 0)
-						{
-							target.health.head = 0;
+							targetHealth.torso -= 1;
 						}
 						break;
-				}
-				var statusText = target.health.getStatusText();
-				if (statusText.length > 0)
-				{
-					target.name = target.health.getStatusText() + " " + target.originalName;
+					case "Chopping":
+						if (targetHealth.rightArm > 0)
+						{
+							targetHealth.rightArm = 0;
+						}
+						else if (targetHealth.leftArm > 0)
+						{
+							targetHealth.leftArm = 0;
+						}
+						else if (targetHealth.rightLeg > 0)
+						{
+							targetHealth.rightLeg = 0;
+						}
+						else if (targetHealth.leftLeg > 0)
+						{
+							targetHealth.leftLeg = 0;
+						}
+						else if (targetHealth.leftLeg > 0)
+						{
+							targetHealth.leftLeg = 0;
+						}
+						else if (targetHealth.head > 0)
+						{
+							targetHealth.head = 0;
+						}
+						break;
 				}
 			}
 			
@@ -334,13 +343,34 @@
 								
 								if (weapon.rank != -1)
 								{
-									damageHealthWithWeapon(weapon.name, weapon.type, this);
+									damageHealthWithWeapon(weapon.type, this.health);
+									var statusText = this.health.getStatusText();
+									if (statusText.length > 0)
+									{
+										this.name = this.health.getStatusText() + " " + this.originalName;
+									}
+									var message = "You attack the " + this.originalName + " with your " + weapon.name + ".";
 									if ((this.health.head == 0) || (this.health.torso == 0))
 									{
+										message += " The " + this.originalName + " is dead.";
 										this.name = this.name + " (Dead)";
 										this.actions = [];
 									}
-									reloadLocation("You attack the " + this.originalName + " with your " + weapon.name + ".");
+									else if ((this.health.leftArm > 0) || (this.health.rightArm > 0))
+									{
+										message += " The " + this.originalName + " counter attacks with it's bark claws!";
+										damageHealthWithWeapon("Chopping", playerHealth);
+									}
+									else if ((this.health.leftLeg > 0) && (this.health.rightLeg > 0))
+									{
+										message += " The " + this.originalName + " counter attacks with it's oaken teeth!";
+										damageHealthWithWeapon("Biting", playerHealth);
+									}
+									else if (this.health.head > 0)
+									{
+										message += " The " + this.originalName + " snarls viciously.";
+									}
+									reloadLocation(message);
 								}
 								else
 								{
