@@ -14,39 +14,60 @@
 	<body onload="setUp()">
 		<p id="locationInfo"></p>
 		<strong><p id="info" style="color: red"></p></strong>
-		<p>Nearby Locations:</p>
-		<ul id="nearbyLocations"></ul>
-		<p>Nearby Items:</p>
-		<ul id="nearbyItems"></ul>
-		<p>Inventory:</p>
-		<ul id="inventoryInfo"></ul>
+		<div id="aliveInfo">
+			<p>Nearby Locations:</p>
+			<ul id="nearbyLocations"></ul>
+			<p>Nearby Items:</p>
+			<ul id="nearbyItems"></ul>
+			<p>Inventory:</p>
+			<ul id="inventoryInfo"></ul>
+		</div>
 		<p>Injuries:</p>
 		<p id="healthStatusInfo"></p>
 		
 		<script>
-			function getWeaponFromInventory(source)
+			function getWeaponFromInventory(source, health)
 			{
 				this.type = "";
 				this.rank = -1;
 				this.name = "";
-				for (let i = 0; i < source.length; i++)
+				if ((health.leftArm > 0) || (health.rightArm > 0))
 				{
-					var item = source[i];
-					for (let j = 0; j < item.attributes.length; j++)
+					this.type = "HighUnarmed";
+					this.rank = 0;
+					this.name = "Fists";
+					
+					for (let i = 0; i < source.length; i++)
 					{
-						var attribute = item.attributes[j];
-						if ((attribute.length > 6) && (attribute.substr(0,6) == "Weapon"))
+						var item = source[i];
+						for (let j = 0; j < item.attributes.length; j++)
 						{
-							testRank = parseInt(attribute.substr(7,8));
-							if (testRank > this.rank)
+							var attribute = item.attributes[j];
+							if ((attribute.length > 6) && (attribute.substr(0,6) == "Weapon"))
 							{
-								this.name = item.name;
-								this.type = attribute.substr(10,attribute.length);
-								this.rank = testRank;
+								testRank = parseInt(attribute.substr(7,8));
+								if (testRank > this.rank)
+								{
+									this.name = item.name;
+									this.type = attribute.substr(10,attribute.length);
+									this.rank = testRank;
+								}
+								
 							}
-							
 						}
 					}
+				}
+				else if ((health.leftLeg > 0) || (health.rightLeg > 0))
+				{
+					this.type = "LowUnarmed";
+					this.rank = 0;
+					this.name = "Feet";
+				}
+				else if (health.head == 2)
+				{
+					this.type = "LowUnarmed";
+					this.rank = 0;
+					this.name = "Teeth";
 				}
 			}
 			
@@ -56,12 +77,9 @@
 				this.originalName = name;
 				this.actions = actions; //dictionary of action names and functions
 				this.attributes = attributes;
-				for (let i = 0; i < attributes.length; i++)
+				if (attributes.includes("HasHealth"))
 				{
-					if (attributes[i] == "HasHealth")
-					{
-						this.health = new bodyHealthTracking;
-					}
+					this.health = new bodyHealthTracking;
 				}
 			}
 			
@@ -77,7 +95,35 @@
 			{
 				switch (weaponType)
 				{
-					case "Biting":
+					case "Bashing":
+						if (targetHealth.rightArm > 1)
+						{
+							targetHealth.rightArm = 1;
+						}
+						else if (targetHealth.leftArm > 1)
+						{
+							targetHealth.leftArm = 1;
+						}
+						else if (targetHealth.head > 0)
+						{
+							targetHealth.head -= 1;
+						}
+						break;
+					case "HighUnarmed":
+						if (targetHealth.rightArm > 0)
+						{
+							targetHealth.rightArm -= 1;
+						}
+						else if (targetHealth.leftArm > 0)
+						{
+							targetHealth.leftArm -= 1;
+						}
+						else if (targetHealth.head > 0)
+						{
+							targetHealth.head -= 1;
+						}
+						break;
+					case "LowUnarmed":
 						if (targetHealth.rightLeg > 0)
 						{
 							targetHealth.rightLeg -= 1;
@@ -247,6 +293,16 @@
 				}
 				
 				$('#healthStatusInfo').html(playerHealth.getStatusText());
+				
+				if ((playerHealth.head == 0) || (playerHealth.torso == 0))
+				{
+					$('#aliveInfo').hide();
+					$('#healthStatusInfo').html(
+						$('#healthStatusInfo').html() + "<br/>" +
+						"You are in no condition to carry on. This is the end of your journey.<br/>" +
+						"<button onclick='window.location.reload();'>Begin Anew</button>"
+					);
+				}
 			}
 			
 			function reloadLocation(message)
@@ -287,6 +343,18 @@
 				$('#info').html(message);
 			}
 			
+			function containsItem(source, itemName)
+			{
+				for (let i = 0; i < source.length; i++)
+				{
+					if (source[i].name == itemName)
+					{
+						return true;
+					}
+				}
+				return false;
+			}
+			
 			//Items
 			function inventoryAxe() {
 				return new item(
@@ -306,17 +374,121 @@
 			
 			function woddenLog() {
 				return new item(
-					"Wooden Log", 
+					"Wooden Log", [], []
+				);
+			};
+			
+			function apple() {
+				return new item(
+					"Apple", [], ["Edible"]
+				);
+			};
+			
+			function bagOfAcorns() {
+				return new item(
+					"Bag of Acorns", [], ["Weapon-10-HighUnarmed", "Edible"]
+				);
+			};
+			
+			function canteen() {
+				return new item(
+					"Canteen of Water", [], []
+				);
+			};
+			
+			function stream() {
+				return new item(
+					"Stream", 
 					[
-						["Discard", function() 
+						["Fill Canteen", function() 
 							{
-								inventory.splice(inventory.indexOf(this), 1);
-								reloadLocation("You discard the wooden log.");
+								if (containsItem(inventory, "Canteen of Water"))
+								{
+									reloadLocation("Your canteen is already full.");
+								}
+								else
+								{
+									inventory.push(new canteen());
+									reloadLocation("You fill your Canteen of Water");
+								}
 							}
 						]
 					], []
 				);
 			};
+			
+			function cauldron() {
+				return new item(
+					"Cauldron", 
+					[
+						["Make Soup", function()
+							{
+								if (containsItem(inventory, "Canteen of Water"))
+								{
+									var numEdibles = 0;
+									var message = "You made Soup containing:";
+									for (let i = inventory.length - 1; i >= 0; i--)
+									{
+										var edibleItem = inventory[i];
+										if (edibleItem.attributes.includes("Edible"))
+										{
+											if (numEdibles > 0)
+											{
+												message += ","
+											}
+											numEdibles++;
+											message += " " + edibleItem.name;
+											inventory.splice(i,1);
+										}
+									}
+									if (numEdibles == 0)
+									{
+										message = "You don't have any edible ingredients.";
+									}
+									else
+									{
+										for (let i = 0; i < inventory.length; i++)
+										{
+											if (inventory[i].name == "Canteen of Water")
+											{
+												inventory.splice(i, 1);
+												i = inventory.length;
+											}
+										}
+										this.actions = 
+										[
+											["Consume Soup", function()
+												{
+													currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+													currentLocation.items.push(new cauldron());
+													reloadLocation("You eat the Soup.");
+												}
+											]
+										];
+									}
+									reloadLocation(message);
+								}
+								else
+								{
+									reloadLocation("You don't have any water.");
+								}
+							}
+						]
+					], []
+				);
+			};
+			
+			function goblinLoot() {
+				var rand = Math.random();
+				if (rand < 0.5)
+				{
+					return new apple();
+				}
+				else
+				{
+					return new bagOfAcorns();
+				}
+			}
 			
 			function nearbyAxe() {
 				return new item(
@@ -333,13 +505,76 @@
 				);
 			};
 			
+			function rock() {
+				return new item(
+					"Rock",
+					[
+						["Pick up", function() 
+							{
+								currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+								this.actions = [];
+								inventory.push(this);
+								reloadLocation("You pick up a rock.");
+							}
+						]
+					], ["Weapon-15-Bashing"]
+				);
+			};
+			
+			function flower() {
+				return new item(
+					"Flower",
+					[
+						["Pick up", function() 
+							{
+								currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+								this.actions = [];
+								inventory.push(this);
+								reloadLocation("You pick up a flower.");
+							}
+						]
+					], ["SuitableGift", "Edible"]
+				);
+			};
+			
 			function treeGoblin() { 
 				return new item(
 					"Tree Goblin",
 					[
+						["Give Gift", function()
+						{
+							if (inventory.length > 0)
+							{
+								var random = Math.floor(Math.random() * inventory.length);
+								var gift = inventory[random];
+								var loot = new goblinLoot();
+								inventory.splice(random, 1);
+								inventory.push(loot);
+								var suitableGiftMessage = "";
+								var lootName = loot.name;
+								if (gift.attributes.includes("SuitableGift"))
+								{
+									suitableGiftMessage = "The Tree Goblin is pleased with your gift. ";
+									
+									var extraLoot;
+									extraLoot = new goblinLoot();
+									lootName += ", " + extraLoot.name;
+									inventory.push(extraLoot);
+									
+									extraLoot = new goblinLoot();
+									lootName += ", " + extraLoot.name;
+									inventory.push(extraLoot);
+								}
+								reloadLocation("You give: " + gift.name + "<br/>" + suitableGiftMessage +"The Tree Goblin gives you: " + lootName);
+							}
+							else
+							{
+								reloadLocation("You do not have a gift to give the Tree Goblin");
+							}
+						}],
 						["Attack", function()
 							{
-								var weapon = new getWeaponFromInventory(inventory);
+								var weapon = new getWeaponFromInventory(inventory, playerHealth);
 								
 								if (weapon.rank != -1)
 								{
@@ -354,17 +589,28 @@
 									{
 										message += " The " + this.originalName + " is dead.";
 										this.name = this.name + " (Dead)";
-										this.actions = [];
+										this.actions = 
+										[
+											["Loot", function()
+												{
+													var loot = new goblinLoot();
+													inventory.push(loot);
+													currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+													reloadLocation("You find: " + loot.name);
+												}
+											]
+										];
+										inventory.push(new woddenLog());
 									}
 									else if ((this.health.leftArm > 0) || (this.health.rightArm > 0))
 									{
-										message += " The " + this.originalName + " counter attacks with it's bark claws!";
+										message += " The " + this.originalName + " counterattacks with it's bark claws!";
 										damageHealthWithWeapon("Chopping", playerHealth);
 									}
 									else if ((this.health.leftLeg > 0) && (this.health.rightLeg > 0))
 									{
-										message += " The " + this.originalName + " counter attacks with it's oaken teeth!";
-										damageHealthWithWeapon("Biting", playerHealth);
+										message += " The " + this.originalName + " counterattacks with it's oaken teeth!";
+										damageHealthWithWeapon("LowUnarmed", playerHealth);
 									}
 									else if (this.health.head > 0)
 									{
@@ -374,7 +620,7 @@
 								}
 								else
 								{
-									showMessage("You need a weapon to attack the Tree Goblin.");
+									reloadLocation("You are in no condition to attack a Tree Goblin.");
 								}
 							}
 						]
@@ -392,13 +638,10 @@
 								var choppingToolName = "";
 								for (let i = 0; i < inventory.length; i++)
 								{
-									for (let j = 0; j < inventory[i].attributes.length; j++)
+									if (inventory[i].attributes.includes("ChoppingTool"))
 									{
-										if (inventory[i].attributes[j] == "ChoppingTool")
-										{
-											hasChoppingTool = true;
-											choppingToolName = inventory[i].name;
-										}
+										hasChoppingTool = true;
+										choppingToolName = inventory[i].name;
 									}
 								}
 								
@@ -406,16 +649,41 @@
 								{
 									currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
 									inventory.push(new woddenLog());
-									currentLocation.items.push(new treeGoblin());
-									reloadLocation("You chop down a tree with your " + choppingToolName + ". A Tree Goblin emerges from the stump.");
+									var message = "You chop down a tree with your " + choppingToolName + "."
+									if (this.attributes.includes("containsGoblin"))
+									{
+										currentLocation.items.push(new treeGoblin());
+										message += " A Tree Goblin emerges from the stump.";
+										i = this.attributes.length;
+									}
+									reloadLocation(message);
 								}
 								else
 								{
-									showMessage("You need a tool to chop down a tree.");
+									reloadLocation("You need a tool to chop down a tree.");
 								}
 							}
+						],
+						["Knock", function() 
+							{
+								var message = "You knock on the Tree. Nothing happens.";
+								if ((playerHealth.leftArm == 0) && (playerHealth.rightArm == 0))
+								{
+									message = "You need arms to knock on a Tree.";
+								}
+								else
+								{
+									if (this.attributes.includes("containsGoblin"))
+									{
+										currentLocation.items.push(new treeGoblin());
+										message = " A Tree Goblin emerges from the Tree.";
+										this.attributes.splice(this.attributes.indexOf("containsGoblin"), 1);
+									}
+								}
+								reloadLocation(message);
+							}
 						]
-					], []
+					], ["containsGoblin"]
 				);
 			};
 			
@@ -428,13 +696,21 @@
 			forestClearing.items.push(new tree());
 			forestClearing.items.push(new tree());
 			forestClearing.items.push(new tree());
+			forestClearing.items.push(new tree());
+			forestClearing.items.push(new rock());
+			forestClearing.items.push(new cauldron());
 			
 			var forestPath = new mapLocation(
 				"Forest Path",
 				[], //actions
 				["Forest Clearing"] //locations
 			);
-			
+			forestPath.items.push(new tree());
+			forestPath.items.push(new tree());
+			forestPath.items.push(new tree());
+			forestPath.items.push(new stream());
+			forestPath.items.push(new flower());
+			forestPath.items.push(new flower());
 		</script>
 	</body>
 </html>
