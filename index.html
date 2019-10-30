@@ -26,8 +26,8 @@
 			<p>Inventory:</p>
 			<ul id="inventoryInfo"></ul>
 		</div>
-		<p>Injuries:</p>
-		<p id="healthStatusInfo"></p>
+		<p>Injuries: <span id="healthStatusInfo"></span></p>
+		
 		
 		<script>
 			function getWeaponFromInventory(source, health)
@@ -170,6 +170,34 @@
 				}
 			}
 			
+			function healMinorInjury(health)
+			{
+				if (health.head == 1)
+				{
+					health.head = 2;
+				}
+				else if (health.torso == 1)
+				{
+					health.torso = 2;
+				}
+				else if (health.rightArm == 1)
+				{
+					health.rightArm = 2;
+				}
+				else if (health.leftArm == 1)
+				{
+					health.leftArm = 2;
+				}
+				else if (health.rightLeg == 1)
+				{
+					health.rightLeg = 2;
+				}
+				else if (health.leftLeg == 1)
+				{
+					health.leftLeg = 2;
+				}
+			}
+			
 			function bodyHealthTracking()
 			{
 				this.head = 2;
@@ -178,6 +206,12 @@
 				this.rightArm = 2;
 				this.leftLeg = 2;
 				this.rightLeg = 2;
+				this.getOverallHealthText  = function()
+				{
+					var totalHealth = this.head + this.torso + this.leftArm + this.rightArm + this.leftLeg + this.rightLeg;
+					var maxHealth = 12;
+					return totalHealth + "/" + maxHealth;
+				}
 				this.getStatusText = function()
 				{
 					var headStatus = "";
@@ -296,7 +330,10 @@
 					);
 				}
 				
-				$('#healthStatusInfo').html(playerHealth.getStatusText());
+				$('#healthStatusInfo').html(
+					playerHealth.getStatusText()+ "<br/>" +
+					"Overall Health: " + playerHealth.getOverallHealthText()
+				);
 				
 				if ((playerHealth.head == 0) || (playerHealth.torso == 0))
 				{
@@ -429,23 +466,23 @@
 							{
 								if (containsItem(inventory, "Canteen of Water"))
 								{
-									var numEdibles = 0;
+									this.numEdibles = 0;
 									var message = "You made Soup containing:";
 									for (let i = inventory.length - 1; i >= 0; i--)
 									{
 										var edibleItem = inventory[i];
 										if (edibleItem.attributes.includes("Edible"))
 										{
-											if (numEdibles > 0)
+											if (this.numEdibles > 0)
 											{
 												message += ","
 											}
-											numEdibles++;
+											this.numEdibles++;
 											message += " " + edibleItem.name;
 											inventory.splice(i,1);
 										}
 									}
-									if (numEdibles == 0)
+									if (this.numEdibles == 0)
 									{
 										message = "You don't have any edible ingredients.";
 									}
@@ -465,7 +502,11 @@
 												{
 													currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
 													currentLocation.items.push(new cauldron());
-													reloadLocation("You eat the Soup.");
+													for (let i = 0; i < this.numEdibles; i++)
+													{
+														healMinorInjury(playerHealth);
+													}
+													reloadLocation("You eat the Soup. Some of your minor injuries have been healed.");
 												}
 											]
 										];
