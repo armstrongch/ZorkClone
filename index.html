@@ -2,10 +2,14 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, width=device-width, user-scalable=no" />
 		<title>Zork Clone</title>
 		<style type="text/css">
 			.clickableLI {
 				cursor: pointer;
+			}
+			* {
+				font-size: 16px;
 			}
 		</style>
 	</head>
@@ -578,6 +582,14 @@
 								
 								if (weapon.rank != -1)
 								{
+									for (let i = this.actions.length - 1; i >= 0; i--)
+									{
+										if (this.actions[i][0] == "Give Gift")
+										{
+											this.actions.splice(i, 1);
+											i = -1;
+										}
+									}
 									damageHealthWithWeapon(weapon.type, this.health);
 									var statusText = this.health.getStatusText();
 									if (statusText.length > 0)
