@@ -298,7 +298,7 @@
 			
 			function setUp()
 			{
-				inventory.push(new inventoryAxe());
+				inventory.push(new axe());
 				map = [forestClearing, forestPath];
 				enterLocation("Forest Clearing");
 			}
@@ -417,19 +417,46 @@
 			}
 			
 			//Items
-			function inventoryAxe() {
+			
+			function drop()
+			{
+			    currentLocation.items.push(this);
+				inventory.splice(inventory.indexOf(this), 1);
+				for (let i = 0; i < this.actions.length; i++)
+				{
+				    if (this.actions[i][0] == "Drop")
+				    {
+				        this.actions.splice(i,1);
+				        i = this.actions.length;
+				    }
+				}
+				this.actions.push(["Pick up", pickUp]);
+				reloadLocation("You find: " + this.name);
+			}
+			
+			function pickUp()
+			{
+				inventory.push(this);
+				currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+				for (let i = 0; i < this.actions.length; i++)
+				{
+				    if (this.actions[i][0] == "Pick up")
+				    {
+				        this.actions.splice(i,1);
+				        i = this.actions.length;
+				    }
+				}
+				this.actions.push(["Drop", drop]);
+				reloadLocation("You drop: " + this.name);
+			}
+			
+			function axe() {
 				return new item(
 					"Axe", 
 					[
-						["Drop", function() 
-							{
-								currentLocation.items.push(new nearbyAxe());
-								inventory.splice(inventory.indexOf(this), 1);
-								reloadLocation("You drop your axe.");
-							}
-						]
+					    ["Drop", drop]
 					], 
-					["ChoppingTool", "Weapon-50-Chopping"] //WeaponRanks must be 2-digit numbers
+					["ChoppingTool", "Weapon-50-Chopping", "SuitableGift"] //WeaponRanks must be 2-digit numbers
 				);
 			};
 			
@@ -571,21 +598,6 @@
 					return new bagOfAcorns();
 				}
 			}
-			
-			function nearbyAxe() {
-				return new item(
-					"Axe",
-					[
-						["Pick up", function() 
-							{
-								currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
-								inventory.push(new inventoryAxe());
-								reloadLocation("You pick up an axe.");
-							}
-						]
-					], []
-				);
-			};
 			
 			function rock() {
 				return new item(
