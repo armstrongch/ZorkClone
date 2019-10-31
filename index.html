@@ -167,6 +167,21 @@
 							targetHealth.head = 0;
 						}
 						break;
+					case "Piercing":
+					    if (targetHealth.rightLeg > 1)
+					    {
+					        targetHealth.rightLeg = 1;
+					    }
+					    else if (targetHealth.leftLeg > 1)
+					    {
+					        targetHealth.leftLeg = 1;
+					    }
+					    else if (targetHealth.torso > 1)
+					    {
+					        targetHealth.torso -= 1;
+					    }
+					    console.log(targetHealth.getOverallHealthText());
+					    break;
 				}
 			}
 			
@@ -299,7 +314,7 @@
 			function setUp()
 			{
 				inventory.push(new axe());
-				map = [forestClearing, forestPath];
+				map = [forestClearing, forestPath, farm];
 				enterLocation("Forest Clearing");
 			}
 			
@@ -450,13 +465,23 @@
 				reloadLocation("You drop: " + this.name);
 			}
 			
-			function axe() {
+			function axe() { //starts in your inventory
 				return new item(
 					"Axe", 
 					[
 					    ["Drop", drop]
 					], 
 					["ChoppingTool", "Weapon-50-Chopping", "SuitableGift"] //WeaponRanks must be 2-digit numbers
+				);
+			};
+			
+			function pitchfork() {
+				return new item(
+					"Pitchfork", 
+					[
+					    ["Pick up", pickUp]
+					], 
+					["Weapon-51-Piercing", "SuitableGift"] //WeaponRanks must be 2-digit numbers
 				);
 			};
 			
@@ -805,7 +830,7 @@
 			var forestPath = new mapLocation(
 				"Forest Path",
 				[], //actions
-				["Forest Clearing"] //locations
+				["Forest Clearing", "Farm"] //locations
 			);
 			forestPath.items.push(new tree());
 			forestPath.items.push(new tree());
@@ -813,6 +838,13 @@
 			forestPath.items.push(new stream());
 			forestPath.items.push(new flower());
 			forestPath.items.push(new flower());
+			
+			var farm = new mapLocation(
+				"Farm",
+				[], //actions
+				["Forest Path"] //locations
+			);
+			farm.items.push(new pitchfork());
 		</script>
 	</body>
 </html>
