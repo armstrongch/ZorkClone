@@ -170,6 +170,26 @@
 				}
 			}
 			
+			function healMajorInjury(health)
+			{
+				if (health.rightArm == 0)
+				{
+					health.rightArm = 2;
+				}
+				else if (health.leftArm == 0)
+				{
+					health.leftArm = 2;
+				}
+				else if (health.rightLeg == 0)
+				{
+					health.rightLeg = 2;
+				}
+				else if (health.leftLeg == 0)
+				{
+					health.leftLeg = 2;
+				}
+			}
+			
 			function healMinorInjury(health)
 			{
 				if (health.head == 1)
@@ -419,6 +439,12 @@
 				);
 			};
 			
+			function magicMushroom() {
+				return new item(
+					"Magic Mushroom", [], ["Edible", "Restorative"]
+				);
+			};
+			
 			function apple() {
 				return new item(
 					"Apple", [], ["Edible"]
@@ -467,6 +493,7 @@
 								if (containsItem(inventory, "Canteen of Water"))
 								{
 									this.numEdibles = 0;
+									this.numRestoratives = 0;
 									var message = "You made Soup containing:";
 									for (let i = inventory.length - 1; i >= 0; i--)
 									{
@@ -478,6 +505,10 @@
 												message += ","
 											}
 											this.numEdibles++;
+											if (edibleItem.attributes.includes("Restorative"))
+											{
+											    this.numRestoratives++;
+											}
 											message += " " + edibleItem.name;
 											inventory.splice(i,1);
 										}
@@ -502,11 +533,17 @@
 												{
 													currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
 													currentLocation.items.push(new cauldron());
+													var message = "You eat the Soup. Some of your minor injuries have been healed.";
 													for (let i = 0; i < this.numEdibles; i++)
 													{
 														healMinorInjury(playerHealth);
 													}
-													reloadLocation("You eat the Soup. Some of your minor injuries have been healed.");
+													for (let i = 0; i < this.numRestoratives; i++)
+													{
+													    healMajorInjury(playerHealth);
+													    message = "You eat the Soup. Some of your major injuries have been healed."
+													}
+													reloadLocation(message);
 												}
 											]
 										];
@@ -606,7 +643,7 @@
 									lootName += ", " + extraLoot.name;
 									inventory.push(extraLoot);
 									
-									extraLoot = new goblinLoot();
+									extraLoot = new magicMushroom();
 									lootName += ", " + extraLoot.name;
 									inventory.push(extraLoot);
 								}
