@@ -491,6 +491,52 @@
 				);
 			};
 			
+			function garden() {
+				return new item(
+					"Garden", 
+					[
+					    ["Pick Produce", function()
+					        {
+					            var availableProduce = false;
+					            if (false)
+					            {
+					                this.numProduce = 5;
+					                availableProduce = true;
+					            }
+					            if (this.numProduce > 0)
+					            {
+					                this.numProduce--;
+					                var randProduce = randomProduceItem();
+					                inventory.push(randProduce);
+					                reloadLocation("You find: " + randProduce.name);
+					            }
+					            else
+					            {
+					                reloadLocation("The Garden is empty.");
+					            }
+					        }
+					    ]    
+					], []
+				);
+			};
+			
+			function randomProduceItem()
+			{
+			    var rand = Math.random();
+				if (rand < 0.4)
+				{
+					return new apple();
+				}
+				else if (rand < 0.8)
+				{
+				    return new pumpkin();
+				}
+				else
+				{
+					return new magicMushroom();
+				}
+			}
+			
 			function magicMushroom() {
 				return new item(
 					"Magic Mushroom", [], ["Edible", "Restorative"]
@@ -500,6 +546,12 @@
 			function apple() {
 				return new item(
 					"Apple", [], ["Edible"]
+				);
+			};
+			
+			function pumpkin() {
+				return new item(
+					"Pumpkin", [], ["Edible"]
 				);
 			};
 			
@@ -845,6 +897,7 @@
 				["Forest Path"] //locations
 			);
 			farm.items.push(new pitchfork());
+			farm.items.push(new garden());
 		</script>
 	</body>
 </html>
