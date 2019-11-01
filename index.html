@@ -485,24 +485,37 @@
 				);
 			};
 			
+			function shovel() {
+				return new item(
+					"Shovel", 
+					[
+					    ["Pick up", pickUp]
+					], 
+					["DiggingTool", "Weapon-40-Bashing", "SuitableGift"] //WeaponRanks must be 2-digit numbers
+				);
+			};
+			
 			function woddenLog() {
 				return new item(
-					"Wooden Log", [], []
+					"Wooden Log", [], ["Weapon-16-Bashing"]
+				);
+			};
+			
+			function fertilizer() {
+				return new item(
+					"Fertilizer", 
+					[
+						["Pick up", pickUp]
+					], []
 				);
 			};
 			
 			function garden() {
-				return new item(
+				var newGarden = new item(
 					"Garden", 
 					[
 					    ["Pick Produce", function()
 					        {
-					            var availableProduce = false;
-					            if (false)
-					            {
-					                this.numProduce = 5;
-					                availableProduce = true;
-					            }
 					            if (this.numProduce > 0)
 					            {
 					                this.numProduce--;
@@ -515,15 +528,92 @@
 					                reloadLocation("The Garden is empty.");
 					            }
 					        }
-					    ]    
-					], []
+					    ],
+						["Water Garden", function()
+					        {
+					            if (containsItem(inventory, "Canteen of Water"))
+					            {
+					                if (this.attributes.includes("Fertilized"))
+									{
+										this.numProduce += 3;
+										for (let i = 0; i < inventory.length; i++)
+										{
+											if (inventory[i].name == "Canteen of Water")
+											{
+												inventory.splice(i, 1);
+												i = inventory.length;
+											}
+										}
+										this.attributes.splice(this.attributes.indexOf("Fertilized", 1));
+										reloadLocation("Produce begins to grow in the Garden.");
+									}
+									else
+									{
+										reloadLocation("The Garden needs Fertilizer first.");
+									}
+					            }
+					            else
+					            {
+					                reloadLocation("You don't have any Water.");
+					            }
+					        }
+					    ],
+						["Fertilize", function()
+							{
+								if (containsItem(inventory, "Fertilizer"))
+								{
+									for (let i = 0; i < inventory.length; i++)
+									{
+										if (inventory[i].name == "Fertilizer")
+										{
+											inventory.splice(i, 1);
+											i = inventory.length;
+										}
+										this.attributes.push("Fertilized");
+										reloadLocation("The Garden is Fertilized.");
+									}
+								}
+								else
+								{
+									reloadLocation("You don't have any Fertilizer");
+								}
+							}
+						],
+						["Dig", function()
+							{
+								var hasDiggingTool = false;
+								var diggingToolName = "";
+								for (let i = 0; i < inventory.length; i++)
+								{
+									if (inventory[i].attributes.includes("DiggingTool"))
+									{
+										hasDiggingTool = true;
+										diggingToolName = inventory[i].name;
+									}
+								}
+								
+								if (hasDiggingTool)
+								{
+									currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+									var message = "You dig up the Garden with your " + diggingToolName + "."
+									reloadLocation(message);
+								}
+								else
+								{
+									reloadLocation("You need a tool to dig up the Garden.");
+								}
+							}
+						]
+					], ["Fertilized"]
 				);
+				newGarden.numProduce = 3;
+				return newGarden;
 			};
 			
 			function randomProduceItem()
 			{
 			    var rand = Math.random();
-				if (rand < 0.4)
+				if (rand < 0.3)
 				{
 					return new apple();
 				}
@@ -897,7 +987,9 @@
 				["Forest Path"] //locations
 			);
 			farm.items.push(new pitchfork());
+			farm.items.push(new shovel());
 			farm.items.push(new garden());
+			farm.items.push(new fertilizer());
 		</script>
 	</body>
 </html>
