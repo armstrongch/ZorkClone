@@ -87,12 +87,23 @@
 				}
 			}
 			
-			function mapLocation(name, actions, travelLocations)
+			function mapLocation(name, travelLocations)
 			{
 				this.name = name;
 				this.items = []; //array items in the location
-				this.actions = actions; //dictionary of action names and functions
 				this.travelLocations = travelLocations; //locations accessible from this locations
+			}
+			
+			function removeItem(source, itemName)
+			{
+			    for (let i = 0; i < source.length; i++)
+				{
+					if (source[i].name == itemName)
+					{
+						source.splice(i, 1);
+						i = source.length;
+					}
+				}
 			}
 			
 			function damageHealthWithWeapon(weaponType, targetHealth)
@@ -310,12 +321,43 @@
 			var inventory = []; //all the items that you're carrying
 			var map = []; //all of the locations in the game
 			var playerHealth = new bodyHealthTracking();
+			var day = 1;
+			var startingHours = 13;
+			var hours = 13;
+			var minutes = 0;
 			
 			function setUp()
 			{
 				inventory.push(new axe());
-				map = [forestClearing, forestPath, farm];
+				map = [forestClearing, forestPath, farm, cellar];
 				enterLocation("Forest Clearing");
+			}
+			
+			function updateTime()
+			{
+			    minutes += 5;
+				if (minutes >= 60)
+				{
+				    minutes -= 60;
+				    hours += 1;
+				    if (hours >= 24)
+				    {
+				        hours -= 24;
+				        days++;
+				    }
+				}
+			}
+			
+			function getTime()
+			{
+                var AmOrPm = hours >= 12 ? 'pm' : 'am';
+                hours = (hours % 12) || 12;
+                var minString = minutes.toString();
+                if (minString.length == 1)
+                {
+                    minString = "0" + minString;
+                }
+                return hours + ":" + minString + " " + AmOrPm;
 			}
 			
 			function enterLocation(locationName)
@@ -323,8 +365,11 @@
 				inventory.sort((a, b) => (a.name > b.name) ? 1 : -1);
 				map.sort((a, b) => (a.name > b.name) ? 1 : -1);
 				
+				updateTime();
+                var time = getTime();
+				
 				$('#locationInfo').html(
-					"Location: " + locationName
+					"Location: " + locationName + ", " + time + ", Day " + day
 				);
 				
 				showMessage("You arrive at " + locationName + ".");
@@ -536,14 +581,7 @@
 					                if (this.attributes.includes("Fertilized"))
 									{
 										this.numProduce += 3;
-										for (let i = 0; i < inventory.length; i++)
-										{
-											if (inventory[i].name == "Canteen of Water")
-											{
-												inventory.splice(i, 1);
-												i = inventory.length;
-											}
-										}
+										removeItem(inventory, "Canteen of Water");
 										this.attributes.splice(this.attributes.indexOf("Fertilized", 1));
 										reloadLocation("Produce begins to grow in the Garden.");
 									}
@@ -562,16 +600,9 @@
 							{
 								if (containsItem(inventory, "Fertilizer"))
 								{
-									for (let i = 0; i < inventory.length; i++)
-									{
-										if (inventory[i].name == "Fertilizer")
-										{
-											inventory.splice(i, 1);
-											i = inventory.length;
-										}
-										this.attributes.push("Fertilized");
-										reloadLocation("The Garden is Fertilized.");
-									}
+									removeItem(inventory, "Fertilizer");
+									this.attributes.push("Fertilized");
+									reloadLocation("The Garden is Fertilized.");
 								}
 								else
 								{
@@ -595,7 +626,8 @@
 								if (hasDiggingTool)
 								{
 									currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
-									var message = "You dig up the Garden with your " + diggingToolName + "."
+									currentLocation.items.push(new trapdoor());
+									var message = "You dig up the Garden with your " + diggingToolName + ", revealing a Trapdoor underneath.";
 									reloadLocation(message);
 								}
 								else
@@ -657,6 +689,54 @@
 				);
 			};
 			
+			function trapdoor() {
+				return new item(
+					"Trapdoor", 
+					[
+    				    ["Open", function()
+        				    {
+        				        if (containsItem(inventory, "Key"))
+        				        {
+        				            removeItem(inventory, "Key");
+        				            currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+        				            currentLocation.travelLocations.push("Underground Cellar");
+        				            reloadLocation("Under the TrapDoor is a staircase, leading down into a Underground Cellar.");
+        				        }
+        				        else
+        				        {
+        				            reloadLocation("You need a Key to unlock the Trapdoor.");       
+        				        }
+        				    }
+    				    ], 
+    				    ["Destroy", function()
+        				    {
+        				        var hasChoppingTool = false;
+								var choppingToolName = "";
+								for (let i = 0; i < inventory.length; i++)
+								{
+									if (inventory[i].attributes.includes("ChoppingTool"))
+									{
+										hasChoppingTool = true;
+										choppingToolName = inventory[i].name;
+									}
+								}
+								
+								if (hasChoppingTool)
+								{
+									currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+        				            currentLocation.travelLocations.push("Underground Cellar");
+        				            reloadLocation("Under the TrapDoor is a staircase, leading down into a Underground Cellar.");
+								}
+								else
+								{
+									reloadLocation("You need a chopping tool to destroy the door.");
+								}
+        				    }
+    				    ]
+				    ], []
+				);
+			};
+			
 			function stream() {
 				return new item(
 					"Stream", 
@@ -713,14 +793,7 @@
 									}
 									else
 									{
-										for (let i = 0; i < inventory.length; i++)
-										{
-											if (inventory[i].name == "Canteen of Water")
-											{
-												inventory.splice(i, 1);
-												i = inventory.length;
-											}
-										}
+										removeItem(inventory, "Canteen of Water");
 										this.actions = 
 										[
 											["Consume Soup", function()
@@ -929,7 +1002,7 @@
 								}
 								else
 								{
-									reloadLocation("You need a tool to chop down a tree.");
+									reloadLocation("You need a tool to chop down a Tree.");
 								}
 							}
 						],
@@ -959,7 +1032,6 @@
 			//Locations
 			var forestClearing = new mapLocation(
 				"Forest Clearing",
-				[], //actions
 				["Forest Path"] //locations
 			);
 			forestClearing.items.push(new tree());
@@ -971,7 +1043,6 @@
 			
 			var forestPath = new mapLocation(
 				"Forest Path",
-				[], //actions
 				["Forest Clearing", "Farm"] //locations
 			);
 			forestPath.items.push(new tree());
@@ -983,13 +1054,17 @@
 			
 			var farm = new mapLocation(
 				"Farm",
-				[], //actions
 				["Forest Path"] //locations
 			);
 			farm.items.push(new pitchfork());
 			farm.items.push(new shovel());
 			farm.items.push(new garden());
 			farm.items.push(new fertilizer());
+			
+			var cellar = new mapLocation(
+			    "Underground Cellar",
+			    ["Farm"]
+		    );
 		</script>
 	</body>
 </html>
