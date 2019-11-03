@@ -689,6 +689,57 @@
 				);
 			};
 			
+			function key() {
+				return new item(
+					"Key", [], []
+				);
+			};
+			
+			function farmCat() {
+				var newFarmCat = new item(
+					"Farm Cat", [
+					    ["Pet", function()
+    					    {
+    					        if (this.numPets == 0)
+    					        {
+    					            this.numPets++;
+    					            reloadLocation("The Farm Cat begins to purr.");   
+    					        }
+    					        else if ((this.numPets >= 3) && (this.attributes.includes("HasKey")))
+    					        {
+    					            this.numPets++;
+    					            this.attributes.splice(this.attributes.indexOf("HasKey"), 1);
+    					            inventory.push(new key());
+    					            minutes += 5;
+    					            reloadLocation("The Farm Cat scurries away. A few minutes later, she returns with a Key in her mouth.");
+    					        }
+    					        else
+    					        {
+    					            this.numPets++;
+    					            reloadLocation("The Farm Cat continues to purr contentedly.")
+    					        }
+    					    }
+					    ],
+					    ["Harass", function()
+    					    {
+    					        this.numPets = 0;
+    					        currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+    					        var currentLocationIndex = map.indexOf(currentLocation);
+    					        var random = Math.floor(Math.random() * map.length);
+    					        while (random == currentLocationIndex)
+    					        {
+    					            random = Math.floor(Math.random() * map.length);
+    					        }
+								map[random].items.push(this);
+    					        reloadLocation("The Farm Cat hisses and runs away.");
+    					    }
+					    ]
+					], ["HasKey"]
+				);
+				newFarmCat.numPets = 0;
+			    return newFarmCat;
+			};
+			
 			function trapdoor() {
 				return new item(
 					"Trapdoor", 
@@ -731,6 +782,11 @@
 								{
 									reloadLocation("You need a chopping tool to destroy the door.");
 								}
+        				    }
+    				    ],
+    				    ["Knock", function()
+        				    {
+        				        reloadLocation("Nothing happens.");   
         				    }
     				    ]
 				    ], []
@@ -1060,6 +1116,7 @@
 			farm.items.push(new shovel());
 			farm.items.push(new garden());
 			farm.items.push(new fertilizer());
+			farm.items.push(new farmCat());
 			
 			var cellar = new mapLocation(
 			    "Underground Cellar",
