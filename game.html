@@ -329,7 +329,7 @@
 			function setUp()
 			{
 				inventory.push(new axe());
-				map = [forestClearing, forestPath, farm, cellar];
+				configureMap();
 				enterLocation("Forest Clearing");
 			}
 			
@@ -691,7 +691,10 @@
 			
 			function key() {
 				return new item(
-					"Key", [], []
+					"Key", 
+					[
+						["Pick up", pickUp]
+					], []
 				);
 			};
 			
@@ -709,7 +712,15 @@
     					        {
     					            this.numPets++;
     					            this.attributes.splice(this.attributes.indexOf("HasKey"), 1);
-    					            inventory.push(new key());
+    					            currentLocation.items.push(new key());
+									for (let i = 0; i < map.length; i++)
+									{
+										if (map[i].name == "Farm House")
+										{
+											removeItem(map[i].items, "Key");
+											i = map.length;
+										}
+									}
     					            minutes += 5;
     					            reloadLocation("The Farm Cat scurries away. A few minutes later, she returns with a Key in her mouth.");
     					        }
@@ -1079,6 +1090,11 @@
 			};
 			
 			//Locations
+			function configureMap()
+			{
+				map = [forestClearing, forestPath, farm, farmHouse];
+			}
+			
 			var forestClearing = new mapLocation(
 				"Forest Clearing",
 				["Forest Path"] //locations
@@ -1103,10 +1119,9 @@
 			
 			var farm = new mapLocation(
 				"Farm",
-				["Forest Path"] //locations
+				["Forest Path", "Farm House"] //locations
 			);
-			farm.items.push(new pitchfork());
-			farm.items.push(new shovel());
+
 			farm.items.push(new garden());
 			farm.items.push(new fertilizer());
 			farm.items.push(new farmCat());
@@ -1115,6 +1130,21 @@
 			    "Underground Cellar",
 			    ["Farm"]
 		    );
+			
+			var farmHouse = new mapLocation(
+			    "Farm House",
+			    ["Farm"]
+		    );
+			farmHouse.items.push(new pitchfork());
+			farmHouse.items.push(new shovel());
+			farmHouse.items.push(new key());
+			farmHouse.items.push(new cauldron());
+			farmHouse.items.push(new woddenLog());
+			farmHouse.items.push(new woddenLog());
+			farmHouse.items.push(new woddenLog());
+			//bed
+			//workbench
+			
 		</script>
 	</body>
 </html>
