@@ -703,14 +703,14 @@
 					"Farm Cat", [
 					    ["Pet", function()
     					    {
-    					        if (this.numPets == 0)
+    					        this.numPets++;
+								var message = "The Farm Cat continues to purr contentedly."
+								if (this.numPets == 0)
     					        {
-    					            this.numPets++;
-    					            reloadLocation("The Farm Cat begins to purr.");   
+    					            message = "The Farm Cat begins to purr.";   
     					        }
     					        else if ((this.numPets >= 3) && (this.attributes.includes("HasKey")))
     					        {
-    					            this.numPets++;
     					            this.attributes.splice(this.attributes.indexOf("HasKey"), 1);
     					            currentLocation.items.push(new key());
 									for (let i = 0; i < map.length; i++)
@@ -722,13 +722,41 @@
 										}
 									}
     					            minutes += 5;
-    					            reloadLocation("The Farm Cat scurries away. A few minutes later, she returns with a Key in her mouth.");
+    					            message = "The Farm Cat scurries away. A few minutes later, she returns with a Key in her mouth."
     					        }
-    					        else
+    					        else if (this.numPets == 5)
     					        {
-    					            this.numPets++;
-    					            reloadLocation("The Farm Cat continues to purr contentedly.")
+									this.actions.push(
+										["Give Snack", function()
+											{
+												var hasSnack = false;
+												var message = "You don't have a snack to give the Farm Cat.";
+												for (let i = 0; i < inventory.length; i++)
+												{
+													if (inventory[i].attributes.includes("Edible"))
+													{
+														var snackName = inventory[i].name;
+														message = "You give the Farm Cat a snack: " + snackName + ". She seems like she wants to be held.";
+														this.actions.push(["Pick up", pickUp]);
+														for (let j = 0; j < this.actions.length; j++)
+														{
+															if (this.actions[i][0] == "Harass")
+															{
+																this.actions.splice(i, 1);
+																j = this.actions.length;
+															}
+														}
+														inventory.splice(i,1);
+														i = inventory.length;
+													}
+												}
+												reloadLocation(message);
+											}
+										]
+									);
+									message = "The Farm Cat looks hungry.";
     					        }
+								reloadLocation(message);
     					    }
 					    ],
 					    ["Harass", function()
@@ -745,7 +773,7 @@
     					        reloadLocation("The Farm Cat hisses and runs away.");
     					    }
 					    ]
-					], ["HasKey"]
+					], ["HasKey", "SuitableGift"]
 				);
 				newFarmCat.numPets = 0;
 			    return newFarmCat;
@@ -1139,6 +1167,9 @@
 			farmHouse.items.push(new shovel());
 			farmHouse.items.push(new key());
 			farmHouse.items.push(new cauldron());
+			farmHouse.items.push(new woddenLog());
+			farmHouse.items.push(new woddenLog());
+			farmHouse.items.push(new woddenLog());
 			//bed
 			//workbench
 			
