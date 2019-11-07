@@ -491,7 +491,7 @@
 				    }
 				}
 				this.actions.push(["Pick up", pickUp]);
-				reloadLocation("You find: " + this.name);
+				reloadLocation("You drop: " + this.name);
 			}
 			
 			function pickUp()
@@ -507,7 +507,7 @@
 				    }
 				}
 				this.actions.push(["Drop", drop]);
-				reloadLocation("You drop: " + this.name);
+				reloadLocation("You find: " + this.name);
 			}
 			
 			function axe() { //starts in your inventory
