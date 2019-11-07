@@ -709,18 +709,14 @@
     					        {
     					            message = "The Farm Cat begins to purr.";   
     					        }
-    					        else if ((this.numPets >= 3) && (this.attributes.includes("HasKey")) && (!containsItem(inventory, "Key")))
+    					        else if ((this.numPets == 3) && (this.attributes.includes("HasKey")) && (!containsItem(inventory, "Key")))
     					        {
     					            this.attributes.splice(this.attributes.indexOf("HasKey"), 1);
-    					            currentLocation.items.push(new key());
 									for (let i = 0; i < map.length; i++)
 									{
-										if (map[i].name == "Farm House")
-										{
-											removeItem(map[i].items, "Key");
-											i = map.length;
-										}
+										removeItem(map[i].items, "Key");
 									}
+									currentLocation.items.push(new key());
     					            minutes += 5;
     					            message = "The Farm Cat scurries away. A few minutes later, she returns with a Key in her mouth."
     					        }
