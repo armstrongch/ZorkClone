@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, width=device-width, user-scalable=no" />
+		<title>Untitled Zork Clone</title>
+		<style type="text/css">
+			.clickableLI {
+				cursor: pointer;
+			}
+			* {
+				font-size: 16px;
+			}
+		</style>
+	</head>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+	
+	<body onload="setUp()">
+		<p id="locationInfo"></p>
+		<strong><p id="info" style="color: red"></p></strong>
+		<div id="aliveInfo">
+			<p>Nearby Locations:</p>
+			<ul id="nearbyLocations"></ul>
+			<p>Nearby Items:</p>
+			<ul id="nearbyItems"></ul>
+			<p>Inventory:</p>
+			<ul id="inventoryInfo"></ul>
+		</div>
+		<p>Injuries: <span id="healthStatusInfo"></span></p>
+		
+		
+		<script>
+			function getWeaponFromInventory(source, health)
+			{
+				this.type = "";
+				this.rank = -1;
+				this.name = "";
+				if ((health.leftArm > 0) || (health.rightArm > 0))
+				{
+					this.type = "HighUnarmed";
+					this.rank = 0;
+					this.name = "Fists";
+					
+					for (let i = 0; i < source.length; i++)
+					{
+						var item = source[i];
+						for (let j = 0; j < item.attributes.length; j++)
+						{
+							var attribute = item.attributes[j];
+							if ((attribute.length > 6) && (attribute.substr(0,6) == "Weapon"))
+							{
+								testRank = parseInt(attribute.substr(7,8));
+								if (testRank > this.rank)
+								{
+									this.name = item.name;
+									this.type = attribute.substr(10,attribute.length);
+									this.rank = testRank;
+								}
+								
+							}
+						}
+					}
+				}
+				else if ((health.leftLeg > 0) || (health.rightLeg > 0))
+				{
+					this.type = "LowUnarmed";
+					this.rank = 0;
+					this.name = "Feet";
+				}
+				else if (health.head == 2)
+				{
+					this.type = "LowUnarmed";
+					this.rank = 0;
+					this.name = "Teeth";
+				}
+			}
+			
+			function item(name, actions, attributes)
+			{
+				this.name = name;
+				this.originalName = name;
+				this.actions = actions; //dictionary of action names and functions
+				this.attributes = attributes;
+				if (attributes.includes("HasHealth"))
+				{
+					this.health = new bodyHealthTracking;
+				}
+			}
+			
+			function mapLocation(name, travelLocations)
+			{
+				this.name = name;
+				this.items = []; //array items in the location
+				this.travelLocations = travelLocations; //locations accessible from this locations
+			}
+			
+			function removeItem(source, itemName)
+			{
+			    for (let i = 0; i < source.length; i++)
+				{
+					if (source[i].name == itemName)
+					{
+						source.splice(i, 1);
+						i = source.length;
+					}
+				}
+			}
+			
+			function damageHealthWithWeapon(weaponType, targetHealth)
+			{
+				switch (weaponType)
+				{
+					case "Bashing":
+						if (targetHealth.rightArm > 1)
+						{
+							targetHealth.rightArm = 1;
+						}
+						else if (targetHealth.leftArm > 1)
+						{
+							targetHealth.leftArm = 1;
+						}
+						else if (targetHealth.head > 0)
+						{
+							targetHealth.head -= 1;
+						}
+						break;
+					case "HighUnarmed":
+						if (targetHealth.rightArm > 0)
+						{
+							targetHealth.rightArm -= 1;
+						}
+						else if (targetHealth.leftArm > 0)
+						{
+							targetHealth.leftArm -= 1;
+						}
+						else if (targetHealth.head > 0)
+						{
+							targetHealth.head -= 1;
+						}
+						break;
+					case "LowUnarmed":
+						if (targetHealth.rightLeg > 0)
+						{
+							targetHealth.rightLeg -= 1;
+						}
+						else if (targetHealth.leftLeg > 0)
+						{
+							targetHealth.leftLeg -= 1;
+						}
+						else if (targetHealth.torso > 0)
+						{
+							targetHealth.torso -= 1;
+						}
+						break;
+					case "Chopping":
+						if (targetHealth.rightArm > 0)
+						{
+							targetHealth.rightArm = 0;
+						}
+						else if (targetHealth.leftArm > 0)
+						{
+							targetHealth.leftArm = 0;
+						}
+						else if (targetHealth.rightLeg > 0)
+						{
+							targetHealth.rightLeg = 0;
+						}
+						else if (targetHealth.leftLeg > 0)
+						{
+							targetHealth.leftLeg = 0;
+						}
+						else if (targetHealth.leftLeg > 0)
+						{
+							targetHealth.leftLeg = 0;
+						}
+						else if (targetHealth.head > 0)
+						{
+							targetHealth.head = 0;
+						}
+						break;
+					case "Piercing":
+					    if (targetHealth.rightLeg > 1)
+					    {
+					        targetHealth.rightLeg = 1;
+					    }
+					    else if (targetHealth.leftLeg > 1)
+					    {
+					        targetHealth.leftLeg = 1;
+					    }
+					    else if (targetHealth.torso > 1)
+					    {
+					        targetHealth.torso -= 1;
+					    }
+					    console.log(targetHealth.getOverallHealthText());
+					    break;
+				}
+			}
+			
+			function healMajorInjury(health)
+			{
+				if (health.rightArm == 0)
+				{
+					health.rightArm = 2;
+				}
+				else if (health.leftArm == 0)
+				{
+					health.leftArm = 2;
+				}
+				else if (health.rightLeg == 0)
+				{
+					health.rightLeg = 2;
+				}
+				else if (health.leftLeg == 0)
+				{
+					health.leftLeg = 2;
+				}
+			}
+			
+			function healMinorInjury(health)
+			{
+				if (health.head == 1)
+				{
+					health.head = 2;
+				}
+				else if (health.torso == 1)
+				{
+					health.torso = 2;
+				}
+				else if (health.rightArm == 1)
+				{
+					health.rightArm = 2;
+				}
+				else if (health.leftArm == 1)
+				{
+					health.leftArm = 2;
+				}
+				else if (health.rightLeg == 1)
+				{
+					health.rightLeg = 2;
+				}
+				else if (health.leftLeg == 1)
+				{
+					health.leftLeg = 2;
+				}
+			}
+			
+			function bodyHealthTracking()
+			{
+				this.head = 2;
+				this.torso = 2;
+				this.leftArm = 2;
+				this.rightArm = 2;
+				this.leftLeg = 2;
+				this.rightLeg = 2;
+				this.getOverallHealthText  = function()
+				{
+					var totalHealth = this.head + this.torso + this.leftArm + this.rightArm + this.leftLeg + this.rightLeg;
+					var maxHealth = 12;
+					return totalHealth + "/" + maxHealth;
+				}
+				this.getStatusText = function()
+				{
+					var headStatus = "";
+					var torsoStatus = "";
+					var armStatus = "";
+					var legStatus = "";
+					if (this.head == 1)
+					{
+						headStatus = "Concussed";
+					}
+					else if (this.head == 0)
+					{
+						headStatus = "Decapitated";
+					}
+					
+					if ((this.leftArm == 0) && (this.rightArm == 0))
+					{
+						armStatus = "Armless";
+					}
+					else if ((this.leftArm == 0) || (this.rightArm == 0))
+					{
+						armStatus = "One-armed";
+					}
+					
+					if ((this.leftLeg == 0) && (this.rightLeg == 0))
+					{
+						legStatus = "Legless";
+					}
+					else if ((this.leftLeg == 0) || (this.rightLeg == 0))
+					{
+						legStatus = "One-Legged";
+					}
+					
+					if (this.torso == 1)
+					{
+						torsoStatus = "Wounded";
+					}
+					
+					var statusText = torsoStatus;
+					if ((statusText.length > 0) && (headStatus.length > 0))
+					{
+						statusText += ", ";
+					}
+					statusText += headStatus;
+					if ((statusText.length > 0) && (armStatus.length > 0))
+					{
+						statusText += ", ";
+					}
+					statusText += armStatus;
+					if ((statusText.length > 0) && (legStatus.length > 0))
+					{
+						statusText += ", ";
+					}
+					statusText += legStatus;
+					
+					return statusText;
+				};
+			}
+			
+			var currentLocation;
+			var inventory = []; //all the items that you're carrying
+			var map = []; //all of the locations in the game
+			var playerHealth = new bodyHealthTracking();
+			var day = 1;
+			var startingHours = 13;
+			var hours = 13;
+			var minutes = 0;
+			
+			function setUp()
+			{
+				inventory.push(new axe());
+				map = [forestClearing, forestPath, farm, cellar];
+				enterLocation("Forest Clearing");
+			}
+			
+			function updateTime()
+			{
+			    minutes += 5;
+				if (minutes >= 60)
+				{
+				    minutes -= 60;
+				    hours += 1;
+				    if (hours >= 24)
+				    {
+				        hours -= 24;
+				        days++;
+				    }
+				}
+			}
+			
+			function getTime()
+			{
+                var AmOrPm = hours >= 12 ? 'pm' : 'am';
+                hours = (hours % 12) || 12;
+                var minString = minutes.toString();
+                if (minString.length == 1)
+                {
+                    minString = "0" + minString;
+                }
+                return hours + ":" + minString + " " + AmOrPm;
+			}
+			
+			function enterLocation(locationName)
+			{
+				inventory.sort((a, b) => (a.name > b.name) ? 1 : -1);
+				map.sort((a, b) => (a.name > b.name) ? 1 : -1);
+				
+				updateTime();
+                var time = getTime();
+				
+				$('#locationInfo').html(
+					"Location: " + locationName + ", " + time + ", Day " + day
+				);
+				
+				showMessage("You arrive at " + locationName + ".");
+				
+				for (let i = 0; i < map.length; i++)
+				{
+					if (map[i].name == locationName)
+					{
+						currentLocation = map[i];
+						i = map.length;
+					}
+				}
+				
+				var nearbyLocationsList = "<ul>";
+				for (let i = 0; i < currentLocation.travelLocations.length; i++)
+				{
+					var locationHTML = "<li class='clickableLI' onclick='enterLocation(\"" + currentLocation.travelLocations[i] + "\")'>" + currentLocation.travelLocations[i] + "</li>";
+					nearbyLocationsList += locationHTML;
+				}
+				nearbyLocationsList += "</ul>";
+				$('#nearbyLocations').html(nearbyLocationsList);
+				
+				$('#nearbyItems').html('');
+				for (let i = 0; i < currentLocation.items.length; i++)
+				{
+					var item = currentLocation.items[i];
+					$('#nearbyItems').html(
+						$('#nearbyItems').html() + "<li>" + getItemHTML(item, "currentLocation.items", i)
+					);
+				}
+				
+				$('#inventoryInfo').html('');
+				for (let i = 0; i < inventory.length; i++)
+				{
+					var item = inventory[i];
+					$('#inventoryInfo').html(
+						$('#inventoryInfo').html() + "<li>" + getItemHTML(item, "inventory", i)
+					);
+				}
+				
+				$('#healthStatusInfo').html(
+					playerHealth.getStatusText()+ "<br/>" +
+					"Overall Health: " + playerHealth.getOverallHealthText()
+				);
+				
+				if ((playerHealth.head == 0) || (playerHealth.torso == 0))
+				{
+					$('#aliveInfo').hide();
+					$('#healthStatusInfo').html(
+						$('#healthStatusInfo').html() + "<br/>" +
+						"You are in no condition to carry on. This is the end of your journey.<br/>" +
+						"<button onclick='window.location.reload();'>Begin Anew</button>"
+					);
+				}
+			}
+			
+			function reloadLocation(message)
+			{
+				enterLocation(currentLocation.name);
+				showMessage(message);
+			}
+			
+			function getItemHTML(item, source, index)
+			{
+				var itemHTML = item.name;
+				if (item.actions.length > 0)
+				{
+					var itemActionListHTML = getItemActionListHTML(item, source, index);
+					itemHTML += itemActionListHTML;
+				}
+				return itemHTML;
+			}
+			
+			function getItemActionListHTML(item, source, index)
+			{
+				var itemActionListHTML = "<ul>";
+				for (let i = 0; i < item.actions.length; i++)
+				{
+					var action = item.actions[i];
+					var actionName = action[0];
+					var actionFunction = action[1];
+					
+					var actionHTML = "<li class='clickableLI' onclick='(" + source + "[" + index + "].actions[" + i + "][1].bind(" + source + "[" + index + "]))();'>" + actionName + "</li>";
+					itemActionListHTML += actionHTML;
+				}
+				itemActionListHTML += "</ul>";
+				return itemActionListHTML;
+			}
+			
+			function showMessage(message)
+			{
+				$('#info').html(message);
+			}
+			
+			function containsItem(source, itemName)
+			{
+				for (let i = 0; i < source.length; i++)
+				{
+					if (source[i].name == itemName)
+					{
+						return true;
+					}
+				}
+				return false;
+			}
+			
+			//Items
+			
+			function drop()
+			{
+			    currentLocation.items.push(this);
+				inventory.splice(inventory.indexOf(this), 1);
+				for (let i = 0; i < this.actions.length; i++)
+				{
+				    if (this.actions[i][0] == "Drop")
+				    {
+				        this.actions.splice(i,1);
+				        i = this.actions.length;
+				    }
+				}
+				this.actions.push(["Pick up", pickUp]);
+				reloadLocation("You drop: " + this.name);
+			}
+			
+			function pickUp()
+			{
+				inventory.push(this);
+				currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+				for (let i = 0; i < this.actions.length; i++)
+				{
+				    if (this.actions[i][0] == "Pick up")
+				    {
+				        this.actions.splice(i,1);
+				        i = this.actions.length;
+				    }
+				}
+				this.actions.push(["Drop", drop]);
+				reloadLocation("You find: " + this.name);
+			}
+			
+			function axe() { //starts in your inventory
+				return new item(
+					"Axe", 
+					[
+					    ["Drop", drop]
+					], 
+					["ChoppingTool", "Weapon-50-Chopping", "SuitableGift"] //WeaponRanks must be 2-digit numbers
+				);
+			};
+			
+			function pitchfork() {
+				return new item(
+					"Pitchfork", 
+					[
+					    ["Pick up", pickUp]
+					], 
+					["Weapon-51-Piercing", "SuitableGift"] //WeaponRanks must be 2-digit numbers
+				);
+			};
+			
+			function shovel() {
+				return new item(
+					"Shovel", 
+					[
+					    ["Pick up", pickUp]
+					], 
+					["DiggingTool", "Weapon-40-Bashing", "SuitableGift"] //WeaponRanks must be 2-digit numbers
+				);
+			};
+			
+			function woddenLog() {
+				return new item(
+					"Wooden Log", [], ["Weapon-16-Bashing"]
+				);
+			};
+			
+			function fertilizer() {
+				return new item(
+					"Fertilizer", 
+					[
+						["Pick up", pickUp]
+					], []
+				);
+			};
+			
+			function garden() {
+				var newGarden = new item(
+					"Garden", 
+					[
+					    ["Pick Produce", function()
+					        {
+					            if (this.numProduce > 0)
+					            {
+					                this.numProduce--;
+					                var randProduce = randomProduceItem();
+					                inventory.push(randProduce);
+					                reloadLocation("You find: " + randProduce.name);
+					            }
+					            else
+					            {
+					                reloadLocation("The Garden is empty.");
+					            }
+					        }
+					    ],
+						["Water Garden", function()
+					        {
+					            if (containsItem(inventory, "Canteen of Water"))
+					            {
+					                if (this.attributes.includes("Fertilized"))
+									{
+										this.numProduce += 3;
+										removeItem(inventory, "Canteen of Water");
+										this.attributes.splice(this.attributes.indexOf("Fertilized", 1));
+										reloadLocation("Produce begins to grow in the Garden.");
+									}
+									else
+									{
+										reloadLocation("The Garden needs Fertilizer first.");
+									}
+					            }
+					            else
+					            {
+					                reloadLocation("You don't have any Water.");
+					            }
+					        }
+					    ],
+						["Fertilize", function()
+							{
+								if (containsItem(inventory, "Fertilizer"))
+								{
+									removeItem(inventory, "Fertilizer");
+									this.attributes.push("Fertilized");
+									reloadLocation("The Garden is Fertilized.");
+								}
+								else
+								{
+									reloadLocation("You don't have any Fertilizer");
+								}
+							}
+						],
+						["Dig", function()
+							{
+								var hasDiggingTool = false;
+								var diggingToolName = "";
+								for (let i = 0; i < inventory.length; i++)
+								{
+									if (inventory[i].attributes.includes("DiggingTool"))
+									{
+										hasDiggingTool = true;
+										diggingToolName = inventory[i].name;
+									}
+								}
+								
+								if (hasDiggingTool)
+								{
+									currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+									currentLocation.items.push(new trapdoor());
+									var message = "You dig up the Garden with your " + diggingToolName + ", revealing a Trapdoor underneath.";
+									reloadLocation(message);
+								}
+								else
+								{
+									reloadLocation("You need a tool to dig up the Garden.");
+								}
+							}
+						]
+					], ["Fertilized"]
+				);
+				newGarden.numProduce = 3;
+				return newGarden;
+			};
+			
+			function randomProduceItem()
+			{
+			    var rand = Math.random();
+				if (rand < 0.3)
+				{
+					return new apple();
+				}
+				else if (rand < 0.8)
+				{
+				    return new pumpkin();
+				}
+				else
+				{
+					return new magicMushroom();
+				}
+			}
+			
+			function magicMushroom() {
+				return new item(
+					"Magic Mushroom", [], ["Edible", "Restorative"]
+				);
+			};
+			
+			function apple() {
+				return new item(
+					"Apple", [], ["Edible"]
+				);
+			};
+			
+			function pumpkin() {
+				return new item(
+					"Pumpkin", [], ["Edible"]
+				);
+			};
+			
+			function bagOfAcorns() {
+				return new item(
+					"Bag of Acorns", [], ["Weapon-10-HighUnarmed", "Edible"]
+				);
+			};
+			
+			function canteen() {
+				return new item(
+					"Canteen of Water", [], []
+				);
+			};
+			
+			function key() {
+				return new item(
+					"Key", [], []
+				);
+			};
+			
+			function farmCat() {
+				var newFarmCat = new item(
+					"Farm Cat", [
+					    ["Pet", function()
+    					    {
+    					        if (this.numPets == 0)
+    					        {
+    					            this.numPets++;
+    					            reloadLocation("The Farm Cat begins to purr.");   
+    					        }
+    					        else if ((this.numPets >= 3) && (this.attributes.includes("HasKey")))
+    					        {
+    					            this.numPets++;
+    					            this.attributes.splice(this.attributes.indexOf("HasKey"), 1);
+    					            inventory.push(new key());
+    					            minutes += 5;
+    					            reloadLocation("The Farm Cat scurries away. A few minutes later, she returns with a Key in her mouth.");
+    					        }
+    					        else
+    					        {
+    					            this.numPets++;
+    					            reloadLocation("The Farm Cat continues to purr contentedly.")
+    					        }
+    					    }
+					    ],
+					    ["Harass", function()
+    					    {
+    					        this.numPets = 0;
+    					        currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+    					        var currentLocationIndex = map.indexOf(currentLocation);
+    					        var random = Math.floor(Math.random() * map.length);
+    					        while (random == currentLocationIndex)
+    					        {
+    					            random = Math.floor(Math.random() * map.length);
+    					        }
+								map[random].items.push(this);
+    					        reloadLocation("The Farm Cat hisses and runs away.");
+    					    }
+					    ]
+					], ["HasKey"]
+				);
+				newFarmCat.numPets = 0;
+			    return newFarmCat;
+			};
+			
+			function trapdoor() {
+				return new item(
+					"Trapdoor", 
+					[
+    				    ["Open", function()
+        				    {
+        				        if (containsItem(inventory, "Key"))
+        				        {
+        				            removeItem(inventory, "Key");
+        				            currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+        				            currentLocation.travelLocations.push("Underground Cellar");
+        				            reloadLocation("Under the TrapDoor is a staircase, leading down into a Underground Cellar.");
+        				        }
+        				        else
+        				        {
+        				            reloadLocation("You need a Key to unlock the Trapdoor.");       
+        				        }
+        				    }
+    				    ], 
+    				    ["Destroy", function()
+        				    {
+        				        var hasChoppingTool = false;
+								var choppingToolName = "";
+								for (let i = 0; i < inventory.length; i++)
+								{
+									if (inventory[i].attributes.includes("ChoppingTool"))
+									{
+										hasChoppingTool = true;
+										choppingToolName = inventory[i].name;
+									}
+								}
+								
+								if (hasChoppingTool)
+								{
+									currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+        				            currentLocation.travelLocations.push("Underground Cellar");
+        				            reloadLocation("Under the TrapDoor is a staircase, leading down into a Underground Cellar.");
+								}
+								else
+								{
+									reloadLocation("You need a chopping tool to destroy the door.");
+								}
+        				    }
+    				    ],
+    				    ["Knock", function()
+        				    {
+        				        reloadLocation("Nothing happens.");   
+        				    }
+    				    ]
+				    ], []
+				);
+			};
+			
+			function stream() {
+				return new item(
+					"Stream", 
+					[
+						["Fill Canteen", function() 
+							{
+								if (containsItem(inventory, "Canteen of Water"))
+								{
+									reloadLocation("Your canteen is already full.");
+								}
+								else
+								{
+									inventory.push(new canteen());
+									reloadLocation("You fill your Canteen of Water");
+								}
+							}
+						]
+					], []
+				);
+			};
+			
+			function cauldron() {
+				return new item(
+					"Cauldron", 
+					[
+						["Make Soup", function()
+							{
+								if (containsItem(inventory, "Canteen of Water"))
+								{
+									this.numEdibles = 0;
+									this.numRestoratives = 0;
+									var message = "You made Soup containing:";
+									for (let i = inventory.length - 1; i >= 0; i--)
+									{
+										var edibleItem = inventory[i];
+										if (edibleItem.attributes.includes("Edible"))
+										{
+											if (this.numEdibles > 0)
+											{
+												message += ","
+											}
+											this.numEdibles++;
+											if (edibleItem.attributes.includes("Restorative"))
+											{
+											    this.numRestoratives++;
+											}
+											message += " " + edibleItem.name;
+											inventory.splice(i,1);
+										}
+									}
+									if (this.numEdibles == 0)
+									{
+										message = "You don't have any edible ingredients.";
+									}
+									else
+									{
+										removeItem(inventory, "Canteen of Water");
+										this.actions = 
+										[
+											["Consume Soup", function()
+												{
+													currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+													currentLocation.items.push(new cauldron());
+													var message = "You eat the Soup. Some of your minor injuries have been healed.";
+													for (let i = 0; i < this.numEdibles; i++)
+													{
+														healMinorInjury(playerHealth);
+													}
+													for (let i = 0; i < this.numRestoratives; i++)
+													{
+													    healMajorInjury(playerHealth);
+													    message = "You eat the Soup. Some of your major injuries have been healed."
+													}
+													reloadLocation(message);
+												}
+											]
+										];
+									}
+									reloadLocation(message);
+								}
+								else
+								{
+									reloadLocation("You don't have any water.");
+								}
+							}
+						]
+					], []
+				);
+			};
+			
+			function goblinLoot() {
+				var rand = Math.random();
+				if (rand < 0.5)
+				{
+					return new apple();
+				}
+				else
+				{
+					return new bagOfAcorns();
+				}
+			}
+			
+			function rock() {
+				return new item(
+					"Rock",
+					[
+						["Pick up", function() 
+							{
+								currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+								this.actions = [];
+								inventory.push(this);
+								reloadLocation("You pick up a rock.");
+							}
+						]
+					], ["Weapon-15-Bashing"]
+				);
+			};
+			
+			function flower() {
+				return new item(
+					"Flower",
+					[
+						["Pick up", function() 
+							{
+								currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+								this.actions = [];
+								inventory.push(this);
+								reloadLocation("You pick up a flower.");
+							}
+						]
+					], ["SuitableGift", "Edible"]
+				);
+			};
+			
+			function treeGoblin() { 
+				return new item(
+					"Tree Goblin",
+					[
+						["Give Gift", function()
+						{
+							if (inventory.length > 0)
+							{
+								var random = Math.floor(Math.random() * inventory.length);
+								var gift = inventory[random];
+								var loot = new goblinLoot();
+								inventory.splice(random, 1);
+								inventory.push(loot);
+								var suitableGiftMessage = "";
+								var lootName = loot.name;
+								if (gift.attributes.includes("SuitableGift"))
+								{
+									suitableGiftMessage = "The Tree Goblin is pleased with your gift. ";
+									
+									var extraLoot;
+									extraLoot = new goblinLoot();
+									lootName += ", " + extraLoot.name;
+									inventory.push(extraLoot);
+									
+									extraLoot = new magicMushroom();
+									lootName += ", " + extraLoot.name;
+									inventory.push(extraLoot);
+								}
+								reloadLocation("You give: " + gift.name + "<br/>" + suitableGiftMessage +"The Tree Goblin gives you: " + lootName);
+							}
+							else
+							{
+								reloadLocation("You do not have a gift to give the Tree Goblin");
+							}
+						}],
+						["Attack", function()
+							{
+								var weapon = new getWeaponFromInventory(inventory, playerHealth);
+								
+								if (weapon.rank != -1)
+								{
+									for (let i = this.actions.length - 1; i >= 0; i--)
+									{
+										if (this.actions[i][0] == "Give Gift")
+										{
+											this.actions.splice(i, 1);
+											i = -1;
+										}
+									}
+									damageHealthWithWeapon(weapon.type, this.health);
+									var statusText = this.health.getStatusText();
+									if (statusText.length > 0)
+									{
+										this.name = this.health.getStatusText() + " " + this.originalName;
+									}
+									var message = "You attack the " + this.originalName + " with your " + weapon.name + ".";
+									if ((this.health.head == 0) || (this.health.torso == 0))
+									{
+										message += " The " + this.originalName + " is dead.";
+										this.name = this.name + " (Dead)";
+										this.actions = 
+										[
+											["Loot", function()
+												{
+													var loot = new goblinLoot();
+													inventory.push(loot);
+													currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+													reloadLocation("You find: " + loot.name);
+												}
+											]
+										];
+										inventory.push(new woddenLog());
+									}
+									else if ((this.health.leftArm > 0) || (this.health.rightArm > 0))
+									{
+										message += " The " + this.originalName + " counterattacks with it's bark claws!";
+										damageHealthWithWeapon("Chopping", playerHealth);
+									}
+									else if ((this.health.leftLeg > 0) && (this.health.rightLeg > 0))
+									{
+										message += " The " + this.originalName + " counterattacks with it's oaken teeth!";
+										damageHealthWithWeapon("LowUnarmed", playerHealth);
+									}
+									else if (this.health.head > 0)
+									{
+										message += " The " + this.originalName + " snarls viciously.";
+									}
+									reloadLocation(message);
+								}
+								else
+								{
+									reloadLocation("You are in no condition to attack a Tree Goblin.");
+								}
+							}
+						]
+					], ["HasHealth"]
+				);
+			};
+			
+			function tree() {
+				return new item(
+					"Tree",
+					[
+						["Chop Down", function() 
+							{
+								var hasChoppingTool = false;
+								var choppingToolName = "";
+								for (let i = 0; i < inventory.length; i++)
+								{
+									if (inventory[i].attributes.includes("ChoppingTool"))
+									{
+										hasChoppingTool = true;
+										choppingToolName = inventory[i].name;
+									}
+								}
+								
+								if (hasChoppingTool)
+								{
+									currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+									inventory.push(new woddenLog());
+									var message = "You chop down a tree with your " + choppingToolName + "."
+									if (this.attributes.includes("containsGoblin"))
+									{
+										currentLocation.items.push(new treeGoblin());
+										message += " A Tree Goblin emerges from the stump.";
+										i = this.attributes.length;
+									}
+									reloadLocation(message);
+								}
+								else
+								{
+									reloadLocation("You need a tool to chop down a Tree.");
+								}
+							}
+						],
+						["Knock", function() 
+							{
+								var message = "You knock on the Tree. Nothing happens.";
+								if (this.attributes.includes("containsGoblin"))
+								{
+									currentLocation.items.push(new treeGoblin());
+									message = " A Tree Goblin emerges from the Tree.";
+									this.attributes.splice(this.attributes.indexOf("containsGoblin"), 1);
+								}
+								reloadLocation(message);
+							}
+						]
+					], ["containsGoblin"]
+				);
+			};
+			
+			//Locations
+			var forestClearing = new mapLocation(
+				"Forest Clearing",
+				["Forest Path"] //locations
+			);
+			forestClearing.items.push(new tree());
+			forestClearing.items.push(new tree());
+			forestClearing.items.push(new tree());
+			forestClearing.items.push(new tree());
+			forestClearing.items.push(new rock());
+			forestClearing.items.push(new cauldron());
+			
+			var forestPath = new mapLocation(
+				"Forest Path",
+				["Forest Clearing", "Farm"] //locations
+			);
+			forestPath.items.push(new tree());
+			forestPath.items.push(new tree());
+			forestPath.items.push(new tree());
+			forestPath.items.push(new stream());
+			forestPath.items.push(new flower());
+			forestPath.items.push(new flower());
+			
+			var farm = new mapLocation(
+				"Farm",
+				["Forest Path"] //locations
+			);
+			farm.items.push(new pitchfork());
+			farm.items.push(new shovel());
+			farm.items.push(new garden());
+			farm.items.push(new fertilizer());
+			farm.items.push(new farmCat());
+			
+			var cellar = new mapLocation(
+			    "Underground Cellar",
+			    ["Farm"]
+		    );
+		</script>
+	</body>
+</html>
