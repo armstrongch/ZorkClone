@@ -5,8 +5,12 @@
 		<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, width=device-width, user-scalable=no" />
 		<title>Untitled Zork Clone</title>
 		<style type="text/css">
+			.clickableLI {
+				cursor: pointer;
+			}
 			* {
 				font-size: 16px;
+				text-align: center;
 			}
 		</style>
 	</head>
@@ -14,16 +18,30 @@
 	<body>
 		<h1>Welcome to Untitled Zork Clone</h1>
 		<a href="https://armstrongch.github.io/ZorkClone/game.html">Start Game</a>
-		
-		<p>version 0.2 changes:</p>
-		<ul>
-			<li>Added the farm house</li>
-		</ul>
-		
-		<p>version 0.1 changes:</p>
-		<ul>
-			<li>Added a title screen</li>
-			<li>Knocking on a tree no longer requires arms</li>
-		</ul>
+		<br/>
+		<p class="clickableLI" onclick="showUpdates()" id="showUpdatesLink">Show Recent Updates (Possible Spoilers)</p>
+		<div id="updateDiv" style="display: none;">
+			<p><strong>version 0.3 changes:</strong></p>
+			<p>
+				The farm cat can get eat snacks and be picked up. Tree goblins will be pleased if you give the farm cat as a gift.
+			</p>
+			
+			<p><strong>version 0.2 changes:</strong></p>
+			<p>
+				Added the farm house
+			</p>
+			
+			<p><strong>version 0.1 changes:</strong></p>
+			<p>
+			Added a title screen. Knocking on a tree no longer requires arms
+			</p>
+		</div>
+		<script>
+			function showUpdates()
+			{
+				$('#updateDiv').show();
+				$('#showUpdatesLink').hide();
+			}
+		</script>
 	</body>
 </html>
