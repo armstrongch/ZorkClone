@@ -325,6 +325,7 @@
 			var startingHours = 13;
 			var hours = 13;
 			var minutes = 0;
+			var playerAttributes = [];
 			
 			function setUp()
 			{
@@ -639,8 +640,22 @@
 					            {
 					                this.numProduce--;
 					                var randProduce = randomProduceItem();
+									var message = "";
+									if (playerAttributes.includes("Lucky"))
+									{
+										message += "You feel Lucky. "
+										playerAttributes.splice(playerAttributes.indexOf("Lucky", 1));
+										randProduce = new magicMushroom();
+									}
+									else if (playerAttributes.includes("Unlucky"))
+									{
+										message += "You feel Unlucky. "
+										playerAttributes.splice(playerAttributes.indexOf("Unlucky", 1));
+										randProduce = new rock();
+									}
+									message += "You find: " + randProduce.name;
 					                inventory.push(randProduce);
-					                reloadLocation("You find: " + randProduce.name);
+					                reloadLocation(message);
 					            }
 					            else
 					            {
@@ -907,6 +922,14 @@
 									);
 									message = "The Farm Cat looks hungry.";
     					        }
+								else if (playerAttributes.includes("Lucky"))
+								{
+									message += " You feel Lucky."
+									playerAttributes.splice(playerAttributes.indexOf("Lucky", 1));
+									var randLoot = new goblinLoot();
+									message += " The Farm Cat coughs up a hairball containing: " + randLoot.name + ".";
+									inventory.push(randLoot);
+								}
 								reloadLocation(message);
     					    }
 					    ],
@@ -1116,6 +1139,46 @@
 				);
 			};
 			
+			function treeGoblinMystic() {
+				var tg = new treeGoblin();
+				tg.originalName += " Mystic";
+				tg.name = tg.originalName;
+				var fortuneAction = 
+				[ "Request a Prophecy", function()
+					{
+						var message = "";
+						if (containsItem(inventory, "Pumpkin"))
+						{
+							removeItem(inventory, "Pumpkin");
+							message = "A Prophecy costs one Pumpkin.";
+							var numOptions = 3;
+							var rand = Math.floor(Math.random() * numOptions) + 1;
+							switch(rand)
+							{
+								case 1:
+									message += " Fortune will smile upon you in the near future.";
+									playerAttributes.push("Lucky");
+									break;
+								case 2:
+									message += " Misfortune will strike you in the near future.";
+									playerAttributes.push("Unlucky");
+									break;
+								case 3:
+									message += " Beware the Underground Cellar. Something ancient and evil lurks there.";
+									break;
+							}
+						}
+						else
+						{
+								message = "You don't have a Pumpkin to pay the " + this.originalName + " for a Prophecy.";
+						}
+						reloadLocation(message);
+					}				
+				];
+				tg.actions.push(fortuneAction);
+				return tg;
+			};
+			
 			function treeGoblinBartender() {
 				var tg = new treeGoblin();
 				tg.originalName += " Bartender";
@@ -1134,13 +1197,93 @@
 							}
 						}
 				];
-				/*var playDiceAction = 
-				["Play Dice", function() 
-					{
-						reloadLocation("Test");
-					}
-				];*/
 				tg.actions.push(fillCanteenAction);
+				var playDiceAction = 
+				["Play Goblin Dice", function() 
+					{
+						var message = "You challenge " + this.originalName + " to a game of Goblin Dice.";
+						if (this.attributes.includes("gamblingDebt"))
+						{
+							if (containsItem(inventory, "Bag of Acorns"))
+							{
+								message += " You pay off your gambling debt with a Bag of Acorns.";
+								removeItem(inventory, "Bag of Acrorns");
+								for (let i = 0; i < this.attributes.length; i++)
+								{
+									if (this.attributes[i] == "gamblingDebt")
+									{
+										this.attributes.splice(i, 1);
+										i = this.attributes.length;
+									}
+								}
+							}
+							else
+							{
+								message += " You cannot play until you pay off your gambling debt. You owe one Bag of Acorns.";
+							}
+						}
+						
+						if (!this.attributes.includes("gamblingDebt"))
+						{
+							var yourRoll = Math.floor(Math.random() * 7) + 1;
+							var theirRoll = Math.floor(Math.random() * 7) + 1;
+							if (playerAttributes.includes("Lucky"))
+							{
+								playerAttributes.splice(playerAttributes.indexOf("Lucky", 1));
+								message += " You feel Lucky.";
+								yourRoll = 3;
+								theirRoll = 3;
+							}
+							else if (playerAttributes.includes("Unlucky"))
+							{
+								playerAttributes.splice(playerAttributes.indexOf("Unlucky", 1));
+								message += " You feel Unlucky.";
+								yourRoll = 1;
+								theirRoll = 7;
+							}
+							message += " Goblin Dice have 7 sides. You roll a " + yourRoll + ". The " + this.originalName + " rolls a " + theirRoll + ".";
+							if ((theirRoll == yourRoll) && (yourRoll == 3))
+							{
+								message += " In Goblin Dice, double threes is a 'Goblin Wedding.' The " + this.originalName + " gives you three Bags of Acorns and a Pumpkin.";
+								for (let i = 0; i < 3; i++)
+								{
+									inventory.push(new bagOfAcorns());
+								}
+								inventory.push(new pumpkin());
+							}
+							else if (theirRoll + yourRoll == 12)
+							{
+								message += " In Goblin Dice, a sum of twelve is a 'Goblin Funeral.' The " + this.originalName + " gives you a Rock.";
+								inventory.push(new rock());
+							}
+							else if (theirRoll >= yourRoll)
+							{
+								message += " You lose!";
+								if (theirRoll == yourRoll)
+								{
+									message += " Goblins win ties in Goblin Dice."
+								}
+								if (containsItem(inventory, "Bag of Acorns"))
+								{
+									message += " You lose one Bag of Acorns.";
+									removeItem(inventory, "Bag of Acorns");
+								}
+								else
+								{
+									message += " You owe a Bag of Acorns!";
+									this.attributes.push("gamblingDebt");
+								}
+							}
+							else
+							{
+								message += " You win. The " + this.originalName + " gives you a Bag of Acorns.";
+								inventory.push(new bagOfAcorns());
+							}
+						}
+						reloadLocation(message);
+					}
+				];
+				tg.actions.push(playDiceAction);
 				return tg;
 			};
 			
@@ -1364,7 +1507,7 @@
 				["Goblin Village"]
 			);
 			goblinTavern.items.push(new treeGoblin());
-			goblinTavern.items.push(new treeGoblin());
+			goblinTavern.items.push(new treeGoblinMystic());
 			goblinTavern.items.push(new treeGoblinBartender());
 			
 		</script>
