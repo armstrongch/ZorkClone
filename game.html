@@ -325,6 +325,8 @@
 			var startingHours = 13;
 			var hours = 13;
 			var minutes = 0;
+			var constableTimer = -5;
+			var constableFine = 0;
 			var playerAttributes = [];
 			
 			function setUp()
@@ -345,20 +347,21 @@
 				if (hours >= 24)
 				{
 					hours -= 24;
-					days++;
+					day++;
 				}
+				constableTimer -= 5;
 			}
 			
 			function getTime()
 			{
                 var AmOrPm = hours >= 12 ? 'pm' : 'am';
-                hours = (hours % 12) || 12;
+                hoursToPrint = (hours % 12) || 12;
                 var minString = minutes.toString();
                 if (minString.length == 1)
                 {
                     minString = "0" + minString;
                 }
-                return hours + ":" + minString + " " + AmOrPm;
+                return hoursToPrint + ":" + minString + " " + AmOrPm;
 			}
 			
 			function enterLocation(locationName)
@@ -429,7 +432,91 @@
 			
 			function reloadLocation(message)
 			{
-				enterLocation(currentLocation.name);
+				if ((constableTimer == 0) && (constableLocation == currentLocation.name))
+				{
+					if (currentLocation.name == "Jail Cell")
+					{
+						message = "You are summoned to Goblin Court. For your violent crimes, you are ordered to pay a fine of " + constableFine + " Bags of Acorns.";
+						var numAcorns = 0;
+						var ggeli = 0; //goblinGuardEvidenceLocationIndex
+						for (let i = 0; i < map.length; i++)
+						{
+							if (map[i].name == "Goblin Guard Evidence Room")
+							{
+								ggeli = i;
+								for (let j = 0; j < map[i].items.length; j++)
+								{
+									if (map[i].items[j].name == "Bag of Acorns")
+									{
+										numAcorns++;
+									}
+								}
+								i = map.length;
+							}
+						}
+						if (numAcorns >= constableFine)
+						{
+							for (let i = 0; i < constableFine; i++)
+							{
+								removeItem(map[ggeli].items, "Bag of Acorns");
+							}
+							constableFine = 0;
+							message += " This fine has been subtracted from your personal belongings. The rest of your belongings can be found in the Goblin Guardhouse Evidence Room. You are free to go.";
+						}
+						else
+						{
+							for (let i = 0; i < numAcorns; i++)
+							{
+								removeItem(map[ggeli].items, "Bag of Acorns")
+							}
+							constableFine -= numAcorns;
+							message += " " + numAcorns + " Bags of Acorns were removed from your personal belongings.";
+							if (constableFine < 10)
+							{
+								message += " You will be expected to pay " + constableFine + " Bags of Acorns to the Goblin Court at a later date. The rest of your belongings can be found in the Goblin Guardhouse Evidence Room. You are free to go.";
+							}
+							else
+							{
+								message += " You are held in contempt of court for unpaid debts. All of your belongings have been taken as collateral. You are free to go.";
+								map[ggeli].items = [];
+							}
+						}
+						
+						enterLocation("Goblin Guardhouse");
+						showMessage(message);
+					}
+					else
+					{
+						message += "<br/>The Goblin Constable places you under arrest. You are hauled away from the scene of the crime to the Jail Cell inside the Goblin Guardhouse and stripped of your possessions.";
+						
+						var evidenceRoom;
+						
+						for (let i = 0; i < map.length; i++)
+						{
+							if (map[i].name == "Goblin Guard Evidence Room")
+							{
+								evidenceRoom = map[i];
+								i = map.length;
+							}
+						}
+						
+						for (let i = inventory.length - 1; i >= 0; i--)
+						{
+							var confiscatedItem = inventory[i];
+							dropToPickup(confiscatedItem);
+							evidenceRoom.items.push(confiscatedItem);
+							inventory.splice(i, 1);
+						}
+						
+						constableTimer = 60;
+						constableLocation = "Jail Cell";
+						enterLocation("Jail Cell");
+					}
+				}
+				else
+				{
+					enterLocation(currentLocation.name);
+				}
 				showMessage(message);
 			}
 			
@@ -477,7 +564,41 @@
 				return false;
 			}
 			
+			function callThePolice(fineIncrease)
+			{
+				var retMessage = "";
+				constableFine += fineIncrease;
+				for (let i = 0; i < currentLocation.items.length; i++)
+				{
+					if (currentLocation.items[i].attributes.includes("isGoblin"))
+					{
+						constableLocation = currentLocation.name;
+						if (constableTimer < 0)
+						{
+							constableTimer = 10;
+						}
+						if (constableTimer > 0)
+						{
+							retMessage += "<br/>" + currentLocation.items[i].name + " sounds the alarm. The Goblin Constable will be here in " + constableTimer + " minutes.";
+							i = currentLocation.items.length;
+						}
+					}
+				}
+				return retMessage;
+			}
+			
 			//Items
+			function dropToPickup(item)
+			{
+				for (let i = item.actions.length - 1; i >= 0; i--)
+				{
+					if (item.actions[i][0] == "Drop")
+					{
+						item.actions.splice(i, 1);
+					}
+				}
+				item.actions.push(["Pick up", pickUp]);
+			}
 			
 			function drop()
 			{
@@ -551,6 +672,23 @@
 				);
 			};
 			
+			function randomTool()
+			{
+				var rand = Math.random();
+				if (rand <= 0.35)
+				{
+					return new axe();
+				}
+				else if (rand <= 0.65)
+				{
+					return new pitchfork();
+				}
+				else
+				{
+					return new shovel();
+				}
+			}
+			
 			function workBench() {
 				return new item(
 					"Work Bench", 
@@ -576,24 +714,9 @@
 									{
 										removeItem(inventory, "Wooden Log");
 									}
-									var rand = Math.random();
-									var toolName;
-									if (rand <= 0.35)
-									{
-										toolName = "Axe";
-										inventory.push(new axe());
-									}
-									else if (rand <= 0.65)
-									{
-										toolName = "Pitchfork";
-										inventory.push(new pitchfork());
-									}
-									else
-									{
-										toolName = "Shovel";
-										inventory.push(new shovel());
-									}
-									reloadLocation("You use Wooden Logs to build: " + toolName);
+									var randTool = randomTool();
+									inventory.push(randTool);
+									reloadLocation("You use Wooden Logs to build: " + randTool.name);
 								}
 							}
 						]
@@ -608,12 +731,28 @@
 						["Take a Nap", function()
 							{
 								hours += 2;
+								if (constableTimer > 0)
+								{
+									constableTimer -= 120;
+									if (constableTimer < 0)
+									{
+										constableTimer = 0;
+									}
+								}
 								reloadLocation("You take a short nap in the Bed, and wake up feeling refreshed.");
 							}
 						],
 						["Go to Sleep", function()
 							{
 								hours += 8;
+								if (constableTimer > 0)
+								{
+									constableTimer -= 480;
+									if (constableTimer < 0)
+									{
+										constableTimer = 0;
+									}
+								}
 								reloadLocation("You take go to sleep in the Bed, and wake up feeling refreshed.");
 							}
 						],
@@ -748,6 +887,127 @@
 				}
 			}
 			
+			function marketProduce() {
+				var newMarketProduce = new item(
+					"Shelf of Produce", 
+					[
+						["Steal Produce", function()
+							{
+								var message = "";
+								if (this.numProduce > 0)
+								{
+									var randProduce = randomProduceItem();
+									var lootText = randProduce.name;
+									inventory.push(randProduce);
+									for (let i = 0; i < 3; i++)
+									{
+										randProduce = randomProduceItem();
+										lootText += ", " + randProduce.name;
+										inventory.push(randProduce);
+									}
+									message = "You steal: " + lootText;
+									message += callThePolice(1);
+									this.numProduce--;
+								}
+								else
+								{
+									message = "There is no Produce left on the Shelf.";
+								}
+								reloadLocation(message);
+							}
+						],
+						["Buy Produce", function()
+							{
+								var message = "";
+								if (this.numProduce > 0)
+								{
+									if (containsItem(inventory, "Bag of Acorns"))
+									{
+										var randProduce = randomProduceItem();
+										var lootText = randProduce.name;
+										inventory.push(randProduce);
+										for (let i = 0; i < 3; i++)
+										{
+											randProduce = randomProduceItem();
+											lootText += ", " + randProduce.name;
+											inventory.push(randProduce);
+										}
+										removeItem(inventory, "Bag of Acorns");
+										this.numProduce--;
+										message = "You buy: " + lootText + "<br/>You pay: Bag of Acorns";
+									}
+									else
+									{
+										message = "You need a Bag of Acorns to pay for the produce.";
+									}
+								}
+								else
+								{
+									message = "There is no Produce left on the Shelf.";
+								}
+								reloadLocation(message);
+							}
+						],
+					], []
+				);
+				newMarketProduce.numProduce = 5;
+				return newMarketProduce;
+			}
+			
+			function marketTools() {
+				var newMarketTools = new item(
+					"Shelf of Tools", 
+					[
+						["Steal a Tool", function()
+							{
+								var message = "";
+								if (this.numTools > 0)
+								{
+									var randTool = randomTool();
+									var lootText = randTool.name;
+									inventory.push(randTool);
+									message = "You steal: " + lootText;
+									message += callThePolice(1);
+									this.numTools--;
+								}
+								else
+								{
+									message = "There are no tools left on the Shelf.";
+								}
+								reloadLocation(message);
+							}
+						],
+						["Buy a Tool", function()
+							{
+								var message = "";
+								if (this.numTools > 0)
+								{
+									if (containsItem(inventory, "Bag of Acorns"))
+									{
+										var randTool = randomTool();
+										var lootText = randTool.name;
+										removeItem(inventory, "Bag of Acorns");
+										inventory.push(randTool);
+										message = "You buy: " + lootText + "<br/>You pay: Bag of Acorns";
+										this.numTools--;									}
+									else
+									{
+										message = "You need a Bag of Acorns to pay for a tool.";
+									}
+								}
+								else
+								{
+									message = "There are no tools left on the Shelf.";
+								}
+								reloadLocation(message);
+							}
+						],
+					], []
+				);
+				newMarketTools.numTools = 3;
+				return newMarketTools;
+			}
+			
 			function produceBarrel() {
 				return new item(
 					"Barrel of Produce", 
@@ -878,7 +1138,6 @@
 										removeItem(map[i].items, "Key");
 									}
 									currentLocation.items.push(new key());
-    					            minutes += 5;
     					            message = "The Farm Cat scurries away. A few minutes later, she returns with a Key in her mouth."
     					        }
     					        else if (this.numPets == 5)
@@ -955,6 +1214,74 @@
 			    return newFarmCat;
 			};
 			
+			function jailCellDoor() {
+				return new item(
+					"Jail Cell Door", 
+					[
+    				    ["Open", function()
+        				    {
+        				        if (containsItem(inventory, "Key"))
+        				        {
+        				            currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+        				            currentLocation.travelLocations.push("Goblin Guardhouse");
+        				            reloadLocation("You unlock and open the Jail Cell Door.");
+        				        }
+        				        else
+        				        {
+        				            reloadLocation("You need a Key to unlock the Jail Cell Door.");       
+        				        }
+        				    }
+    				    ], 
+    				    ["Destroy", function()
+        				    {
+        				        var hasChoppingTool = false;
+								var choppingToolName = "";
+								for (let i = 0; i < inventory.length; i++)
+								{
+									if (inventory[i].attributes.includes("ChoppingTool"))
+									{
+										hasChoppingTool = true;
+										choppingToolName = inventory[i].name;
+									}
+								}
+								
+								if (hasChoppingTool)
+								{
+									currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+        				            currentLocation.travelLocations.push("Underground Cellar");
+        				            reloadLocation("You destroy the Jail Cell Door.");
+								}
+								else
+								{
+									reloadLocation("You need a chopping tool to destroy the Jail Cell Door.");
+								}
+        				    }
+    				    ],
+    				    ["Knock", function()
+        				    {
+        				        var message = "Nothing happens.";
+								for (let i = 0; i < map.length; i++)
+								{
+									if (map[i].name == "Goblin Guardhouse")
+									{
+										for (let j = 0; j < map[i].items.length; j++)
+										{
+											if (map[i].items[j].attributes.includes("isGoblin"))
+											{
+												message = map[i].items[j].name + " yells \"Hey! Quiet in there!\"";
+												j = map[i].items.length;
+											}
+										}
+										i = map.length;
+									}
+								}
+								reloadLocation(message);   
+        				    }
+    				    ]
+				    ], []
+				);
+			};
+			
 			function trapdoor() {
 				return new item(
 					"Trapdoor", 
@@ -994,7 +1321,7 @@
 								}
 								else
 								{
-									reloadLocation("You need a chopping tool to destroy the door.");
+									reloadLocation("You need a chopping tool to destroy the Trapdoor.");
 								}
         				    }
     				    ],
@@ -1219,6 +1546,13 @@
 				return tg;
 			};
 			
+			function treeGoblinConstable() {
+				var tg = new treeGoblin();
+				tg.originalName += " Constable";
+				tg.name = tg.originalName;
+				return tg;
+			};
+			
 			function treeGoblinLumberjack() {
 				var tg = new treeGoblin();
 				tg.originalName += " Lumberjack";
@@ -1440,6 +1774,7 @@
 						["Attack", function()
 							{
 								var weapon = new getWeaponFromInventory(inventory, playerHealth);
+								var message = "";
 								
 								if (weapon.rank != -1)
 								{
@@ -1456,7 +1791,7 @@
 									{
 										this.name = this.health.getStatusText() + " " + this.originalName;
 									}
-									var message = "You attack the " + this.originalName + " with your " + weapon.name + ".";
+									message = "You attack the " + this.originalName + " with your " + weapon.name + ".";
 									if ((this.health.head == 0) || (this.health.torso == 0))
 									{
 										message += " The " + this.originalName + " is dead.";
@@ -1488,15 +1823,26 @@
 									{
 										message += " The " + this.originalName + " snarls viciously.";
 									}
-									reloadLocation(message);
+									if ((currentLocation.name == "Goblin Tavern") 
+										|| (currentLocation.name == "Goblin Market"))
+									{
+										message += callThePolice(3);
+									}
+									else if (currentLocation.name == "Goblin Guardhouse")
+									{
+										constableLocation = currentLocation.name;
+										constableTimer = 0;
+										constableFine += 5;
+									}
 								}
 								else
 								{
-									reloadLocation("You are in no condition to attack a Tree Goblin.");
+									message = "You are in no condition to attack a Tree Goblin.";
 								}
+								reloadLocation(message);
 							}
 						]
-					], ["HasHealth"]
+					], ["HasHealth", "isGoblin"]
 				);
 			};
 			
@@ -1510,15 +1856,7 @@
 							{
 								var random = Math.floor(Math.random() * inventory.length);
 								var gift = inventory[random];
-								for (let i = gift.actions.length - 1; i >= 0; i--)
-								{
-									if (gift.actions[i][0] == "Drop")
-									{
-										gift.actions.splice(i, 1);
-										gift.actions.push(["Pick up", pickUp]);
-										i = -1;
-									}
-								}
+								dropToPickup(gift);
 								currentLocation.items.push(inventory[random]);
 								inventory.splice(random, 1);
 								reloadLocation("You give: " + gift.name + "<br/>The " + this.originalName + " casts it aside.");
@@ -1646,7 +1984,7 @@
 			//Locations
 			function configureMap()
 			{
-				map = [forestClearing, forestPath, farm, farmHouse, undergroundCellar, goblinVillage, goblinTavern, cave];
+				map = [forestClearing, forestPath, farm, farmHouse, undergroundCellar, goblinVillage, goblinTavern, cave, goblinGuardhouse, goblinJail, evidenceRoom, goblinMarket];
 			}
 			
 			var forestClearing = new mapLocation(
@@ -1704,8 +2042,26 @@
 			
 			var goblinVillage = new mapLocation(
 				"Goblin Village",
-				["Forest Path", "Goblin Tavern"] //locations
+				["Forest Path", "Goblin Tavern", "Goblin Guardhouse", "Goblin Market"] //locations
 			);
+			
+			var goblinGuardhouse = new mapLocation(
+				"Goblin Guardhouse",
+				["Goblin Village", "Goblin Guard Evidence Room"]
+			);
+			goblinGuardhouse.items.push(new treeGoblinConstable());
+			
+			var evidenceRoom = new mapLocation(
+				"Goblin Guard Evidence Room",
+				["Goblin Guardhouse"]
+			);
+			
+			var goblinJail = new mapLocation(
+				"Jail Cell",
+				[]
+			);
+			goblinJail.items.push(new bed());
+			goblinJail.items.push(new jailCellDoor());
 			
 			var goblinTavern = new mapLocation(
 				"Goblin Tavern",
@@ -1714,7 +2070,14 @@
 			goblinTavern.items.push(new treeGoblin());
 			goblinTavern.items.push(new treeGoblinMystic());
 			goblinTavern.items.push(new treeGoblinBartender());
-			goblinTavern.items.push(new treeGoblinLumberjack());
+			
+			var goblinMarket = new mapLocation(
+				"Goblin Market",
+				["Goblin Village"]
+			);
+			goblinMarket.items.push(new marketProduce());
+			goblinMarket.items.push(new marketTools());
+			goblinMarket.items.push(new treeGoblinLumberjack());
 			
 			var cave = new mapLocation(
 				"Cave",
