@@ -588,6 +588,18 @@
 			}
 			
 			//Items
+			function pickupToDrop(item)
+			{
+				for (let i = item.actions.length - 1; i >= 0; i--)
+				{
+					if (item.actions[i][0] == "Pick Up")
+					{
+						item.actions.splice(i, 1);
+					}
+				}
+				item.actions.push(["Drop", pickUp]);
+			}
+			
 			function dropToPickup(item)
 			{
 				for (let i = item.actions.length - 1; i >= 0; i--)
@@ -1424,6 +1436,18 @@
 				);
 			};
 			
+			function trollLoot() {
+				var rand = Math.random();
+				if (rand < 0.5)
+				{
+					return new rock();
+				}
+				else
+				{
+					return new fertilizer();
+				}
+			}
+			
 			function goblinLoot() {
 				var rand = Math.random();
 				if (rand < 0.5)
@@ -1538,7 +1562,7 @@
 						}
 						else
 						{
-							reloadLocation("You are in no condition to attack a Tree Goblin.");
+							reloadLocation("You are in no condition to attack.");
 						}
 					}
 				];
@@ -1588,10 +1612,85 @@
 				return tg;
 			};
 			
-			function treeGoblinMystic() {
+			function treeGoblinOracle() {
 				var tg = new treeGoblin();
-				tg.originalName += " Mystic";
+				tg.originalName += " Oracle";
 				tg.name = tg.originalName;
+				
+				for (let i = 0; i < tg.actions.length; i++)
+				{
+					if (tg.actions[i][0] == "Attack")
+					{
+						tg.actions.splice(i, 1);
+						i = tg.actions.length;
+					}
+				}
+				
+				var attackAction = ["Attack", function()
+					{
+						var weapon = new getWeaponFromInventory(inventory, playerHealth);
+						var message = "";
+						
+						if (weapon.rank != -1)
+						{
+							for (let i = this.actions.length - 1; i >= 0; i--)
+							{
+								if (this.actions[i][0] != "Attack")
+								{
+									this.actions.splice(i, 1);
+								}
+							}
+							damageHealthWithWeapon(weapon.type, this.health);
+							var statusText = this.health.getStatusText();
+							if (statusText.length > 0)
+							{
+								this.name = this.health.getStatusText() + " " + this.originalName;
+							}
+							message = "You attack the " + this.originalName + " with your " + weapon.name + ".";
+							if ((this.health.head == 0) || (this.health.torso == 0))
+							{
+								message += " The " + this.originalName + " is dead.";
+								this.name = this.name + " (Dead)";
+								this.actions = 
+								[
+									["Loot", function()
+										{
+											var loot = new goblinLoot();
+											inventory.push(loot);
+											currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
+											reloadLocation("You find: " + loot.name);
+										}
+									]
+								];
+								currentLocation.items.push(new woodenLog());
+							}
+							else
+							{
+								message += " The " + this.originalName + " implores you to turn away from your violent path.";
+							}
+							if ((currentLocation.name == "Goblin Tavern") 
+								|| (currentLocation.name == "Goblin Market")
+								|| (currentLocation.name == "Goblin Temple"))
+							{
+								message += callThePolice(3);
+							}
+							else if (currentLocation.name == "Goblin Guardhouse")
+							{
+								constableLocation = currentLocation.name;
+								constableTimer = 0;
+								constableFine += 5;
+							}
+						}
+						else
+						{
+							message = "You are in no condition to attack.";
+						}
+						reloadLocation(message);
+					}
+				];
+				
+				tg.actions.push(attackAction);
+				
 				var fortuneAction = 
 				[ "Request a Prophecy", function()
 					{
@@ -1796,6 +1895,10 @@
 									{
 										message += " The " + this.originalName + " is dead.";
 										this.name = this.name + " (Dead)";
+										if (this.attributes.includes("isGoblin"))
+										{
+											this.attributes.splice(this.attributes.indexOf("isGoblin"), 1);
+										}
 										this.actions = 
 										[
 											["Loot", function()
@@ -1824,7 +1927,8 @@
 										message += " The " + this.originalName + " snarls viciously.";
 									}
 									if ((currentLocation.name == "Goblin Tavern") 
-										|| (currentLocation.name == "Goblin Market"))
+										|| (currentLocation.name == "Goblin Market")
+										|| (currentLocation.name == "Goblin Temple"))
 									{
 										message += callThePolice(3);
 									}
@@ -1837,7 +1941,7 @@
 								}
 								else
 								{
-									message = "You are in no condition to attack a Tree Goblin.";
+									message = "You are in no condition to attack.";
 								}
 								reloadLocation(message);
 							}
@@ -1865,7 +1969,7 @@
 							{
 								reloadLocation("You do not have a gift to give the " + this.originalName);
 							}
-						}]/*,
+						}],
 						["Attack", function()
 							{
 								var weapon = new getWeaponFromInventory(inventory, playerHealth);
@@ -1885,7 +1989,8 @@
 									{
 										this.name = this.health.getStatusText() + " " + this.originalName;
 									}
-									var message = "You attack the " + this.originalName + " with your " + weapon.name + ".";
+									var message = "You attack the " + this.originalName + " with your " + weapon.name + ".";							
+									
 									if ((this.health.head == 0) || (this.health.torso == 0))
 									{
 										message += " The " + this.originalName + " is dead.";
@@ -1894,37 +1999,36 @@
 										[
 											["Loot", function()
 												{
-													var loot = new goblinLoot();
+													var loot = new trollLoot();
+													pickupToDrop(loot);
 													inventory.push(loot);
 													currentLocation.items.splice(currentLocation.items.indexOf(this), 1);
 													reloadLocation("You find: " + loot.name);
 												}
 											]
 										];
-										currentLocation.items.push(new woodenLog());
 									}
-									else if ((this.health.leftArm > 0) || (this.health.rightArm > 0))
+									else 
 									{
-										message += " The " + this.originalName + " counterattacks with it's bark claws!";
-										damageHealthWithWeapon("Chopping", playerHealth);
-									}
-									else if ((this.health.leftLeg > 0) && (this.health.rightLeg > 0))
-									{
-										message += " The " + this.originalName + " counterattacks with it's oaken teeth!";
-										damageHealthWithWeapon("LowUnarmed", playerHealth);
-									}
-									else if (this.health.head > 0)
-									{
-										message += " The " + this.originalName + " snarls viciously.";
+										healMinorInjury(this.health);
+										healMajorInjury(this.health);
+										var statusAfterHealing = this.health.getStatusText();
+										
+										if (statusText != statusAfterHealing)
+										{
+											this.name = this.health.getStatusText() + " " + this.originalName;
+											message += " " + this.originalName + " rapidly heals its wounds. The " + this.originalName + " counterattacks with its massive fists.";
+											damageHealthWithWeapon("Bashing", playerHealth);
+										}
 									}
 									reloadLocation(message);
 								}
 								else
 								{
-									reloadLocation("You are in no condition to attack a Tree Goblin.");
+									reloadLocation("You are in no condition to attack.");
 								}
 							}
-						]*/
+						]
 					], ["HasHealth"]
 				);
 			};
@@ -1984,7 +2088,7 @@
 			//Locations
 			function configureMap()
 			{
-				map = [forestClearing, forestPath, farm, farmHouse, undergroundCellar, goblinVillage, goblinTavern, cave, goblinGuardhouse, goblinJail, evidenceRoom, goblinMarket];
+				map = [forestClearing, forestPath, farm, farmHouse, undergroundCellar, goblinVillage, goblinTavern, cave, goblinGuardhouse, goblinJail, evidenceRoom, goblinMarket, goblinTemple];
 			}
 			
 			var forestClearing = new mapLocation(
@@ -2042,7 +2146,7 @@
 			
 			var goblinVillage = new mapLocation(
 				"Goblin Village",
-				["Forest Path", "Goblin Tavern", "Goblin Guardhouse", "Goblin Market"] //locations
+				["Forest Path", "Goblin Tavern", "Goblin Guardhouse", "Goblin Market", "Goblin Temple"] //locations
 			);
 			
 			var goblinGuardhouse = new mapLocation(
@@ -2068,7 +2172,6 @@
 				["Goblin Village"]
 			);
 			goblinTavern.items.push(new treeGoblin());
-			goblinTavern.items.push(new treeGoblinMystic());
 			goblinTavern.items.push(new treeGoblinBartender());
 			
 			var goblinMarket = new mapLocation(
@@ -2078,6 +2181,12 @@
 			goblinMarket.items.push(new marketProduce());
 			goblinMarket.items.push(new marketTools());
 			goblinMarket.items.push(new treeGoblinLumberjack());
+			
+			var goblinTemple = new mapLocation(
+				"Goblin Temple",
+				["Goblin Village"]
+			);
+			goblinTemple.items.push(new treeGoblinOracle());
 			
 			var cave = new mapLocation(
 				"Cave",
